@@ -6,6 +6,9 @@
 //! copy of the old file taken first.
 
 mod migrations;
+mod pairing;
+
+pub use pairing::{SessionRow, hash_secret};
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -45,6 +48,8 @@ pub struct ServerRow {
     pub rcon_password: String,
     pub eula_accepted_at: i64,
     pub created_unix: i64,
+    /// The user wants this server running; it is started again after a reboot.
+    pub auto_start: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,8 +116,8 @@ impl Db {
         let (state, reason) = s.state.to_parts();
         self.lock()?.execute(
             "INSERT INTO servers (id, name, mc_version, state, state_reason, host_port,
-                 memory_max_mib, rcon_password, eula_accepted_at, created_unix)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                 memory_max_mib, rcon_password, eula_accepted_at, created_unix, auto_start)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             params![
                 s.id,
                 s.name,
@@ -123,7 +128,8 @@ impl Db {
                 s.memory_max_mib.map(|v| v as i64),
                 s.rcon_password,
                 s.eula_accepted_at,
-                s.created_unix
+                s.created_unix,
+                s.auto_start
             ],
         )?;
         Ok(())
@@ -159,6 +165,17 @@ impl Db {
         let changed = self.lock()?.execute(
             "UPDATE servers SET state = ?2, state_reason = ?3 WHERE id = ?1",
             params![id, name, reason],
+        )?;
+        if changed == 0 {
+            return Err(DbError::NotFound(format!("server {id}")));
+        }
+        Ok(())
+    }
+
+    pub fn set_auto_start(&self, id: &str, auto_start: bool) -> Result<()> {
+        let changed = self.lock()?.execute(
+            "UPDATE servers SET auto_start = ?2 WHERE id = ?1",
+            params![id, auto_start],
         )?;
         if changed == 0 {
             return Err(DbError::NotFound(format!("server {id}")));
@@ -266,7 +283,7 @@ impl Db {
 }
 
 const SERVER_COLS: &str = "id, name, mc_version, state, state_reason, host_port, memory_max_mib,
-    rcon_password, eula_accepted_at, created_unix";
+    rcon_password, eula_accepted_at, created_unix, auto_start";
 const BACKUP_COLS: &str =
     "id, server_id, kind, file_name, size_bytes, sha256, created_unix, verified";
 
@@ -293,6 +310,7 @@ fn server_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<Result<ServerRow>>
         rcon_password: r.get(7)?,
         eula_accepted_at: r.get(8)?,
         created_unix: r.get(9)?,
+        auto_start: r.get(10)?,
     }))
 }
 

@@ -13,6 +13,7 @@ fn server(id: &str, created: i64) -> ServerRow {
         rcon_password: "secret".into(),
         eula_accepted_at: 1_000,
         created_unix: created,
+        auto_start: false,
     }
 }
 

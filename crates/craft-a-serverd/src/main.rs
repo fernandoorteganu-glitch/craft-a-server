@@ -166,10 +166,16 @@ mod app {
             Ok(v) => tracing::info!(podman = %v, "container engine found"),
             Err(e) => tracing::warn!(error = %e, "podman is not usable yet; servers cannot start"),
         }
-        match service.reconcile().await {
-            Ok(report) => tracing::info!(?report, "reconciled"),
-            Err(e) => tracing::error!(error = %e, "boot reconciliation failed"),
-        }
+        let to_autostart = match service.reconcile().await {
+            Ok(report) => {
+                tracing::info!(?report, "reconciled");
+                report.to_autostart
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "boot reconciliation failed");
+                Vec::new()
+            }
+        };
 
         let (stop_tx, stop_rx) = watch::channel(false);
         let mut ctl_task = {
@@ -185,6 +191,12 @@ mod app {
                 .await
             })
         };
+        // Servers that were running before a reboot come back by themselves,
+        // in the background so the control socket is available meanwhile.
+        if !to_autostart.is_empty() {
+            let svc = Arc::clone(&service);
+            tokio::spawn(async move { svc.autostart(&to_autostart).await });
+        }
         let supervisor = spawn_loop(
             &service,
             stop_rx.clone(),

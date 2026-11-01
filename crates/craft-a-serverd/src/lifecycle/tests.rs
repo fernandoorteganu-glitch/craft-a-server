@@ -543,9 +543,10 @@ async fn retention_prunes_old_dailies_but_keeps_manual() -> TestResult {
 // ---- recovery -------------------------------------------------------------
 
 #[tokio::test]
-async fn reconcile_marks_vanished_servers_failed() -> TestResult {
+async fn reconcile_marks_vanished_unwanted_servers_failed() -> TestResult {
     let h = harness();
     let id = running_server(&h).await?;
+    h.svc.db().set_auto_start(&id, false)?; // not a server we promised to bring back
     h.rt.simulate_vanish(&id);
     let report = h.svc.reconcile().await?;
     assert_eq!(report.state_corrected, std::slice::from_ref(&id));
@@ -650,5 +651,71 @@ async fn healthy_servers_are_left_alone_by_the_supervisor() -> TestResult {
     let before = starts();
     h.svc.supervise_once().await?;
     assert_eq!(starts(), before);
+    Ok(())
+}
+
+// ---- auto-start -----------------------------------------------------------
+
+#[tokio::test]
+async fn running_servers_are_marked_to_come_back_and_stopped_ones_are_not() -> TestResult {
+    let h = harness();
+    let id = running_server(&h).await?;
+    assert!(h.svc.get_server(&id)?.auto_start);
+    h.svc.stop(&id).await?;
+    assert!(
+        !h.svc.get_server(&id)?.auto_start,
+        "an explicit stop is respected"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_server_that_cannot_start_does_not_retry_at_boot() -> TestResult {
+    let h = harness();
+    let row = h.svc.create_server("A", "26.3", true).await?;
+    h.rt.fail_next(
+        RuntimeOp::CreateAndStart,
+        crate::runtime::RuntimeError::Egress("x".into()),
+    );
+    let _ = h.svc.start(&row.id).await;
+    assert!(!h.svc.get_server(&row.id)?.auto_start);
+    Ok(())
+}
+
+#[tokio::test]
+async fn after_a_power_cut_a_wanted_server_is_queued_not_failed() -> TestResult {
+    let h = harness();
+    let id = running_server(&h).await?;
+    h.rt.simulate_vanish(&id); // the machine lost power: no container any more
+
+    let report = h.svc.reconcile().await?;
+    assert_eq!(report.to_autostart, std::slice::from_ref(&id));
+    assert!(report.state_corrected.is_empty());
+    assert_eq!(state_of(&h, &id)?, ServerState::Stopped);
+
+    h.svc.autostart(&report.to_autostart).await;
+    assert_eq!(state_of(&h, &id)?, ServerState::Running);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_server_the_user_stopped_stays_stopped_after_reboot() -> TestResult {
+    let h = harness();
+    let id = running_server(&h).await?;
+    h.svc.stop(&id).await?;
+    let report = h.svc.reconcile().await?;
+    assert!(report.to_autostart.is_empty());
+    assert_eq!(state_of(&h, &id)?, ServerState::Stopped);
+    Ok(())
+}
+
+#[tokio::test]
+async fn giving_up_on_a_crash_loop_turns_auto_start_off() -> TestResult {
+    let h = harness_with(FakeProbe::always_up(), |c| c.max_consecutive_failures = 1);
+    let id = running_server(&h).await?;
+    h.rt.simulate_exit(&id, 1, false);
+    h.svc.supervise_once().await?;
+    assert!(matches!(state_of(&h, &id)?, ServerState::Failed(_)));
+    assert!(!h.svc.get_server(&id)?.auto_start);
     Ok(())
 }

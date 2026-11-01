@@ -38,4 +38,24 @@ pub const MIGRATIONS: &[&str] = &[
         detail    TEXT NOT NULL
     );
     "#,
+    // v2: remember whether the user wants a server running, so it can come
+    // back by itself after a reboot or power cut.
+    "ALTER TABLE servers ADD COLUMN auto_start INTEGER NOT NULL DEFAULT 0;",
+    // v3: phone pairing. Only hashes of codes and session tokens are stored.
+    r#"
+    CREATE TABLE pairing_codes (
+        code_hash    TEXT PRIMARY KEY,
+        created_unix INTEGER NOT NULL,
+        expires_unix INTEGER NOT NULL
+    );
+    CREATE TABLE sessions (
+        id             TEXT PRIMARY KEY,
+        token_hash     TEXT NOT NULL UNIQUE,
+        csrf_token     TEXT NOT NULL,
+        device_name    TEXT NOT NULL,
+        created_unix   INTEGER NOT NULL,
+        last_seen_unix INTEGER NOT NULL,
+        expires_unix   INTEGER NOT NULL
+    );
+    "#,
 ];

@@ -17,6 +17,8 @@ pub struct ReconcileReport {
     pub autosave_restored: Vec<String>,
     /// Pods with our label but no matching server row (left alone).
     pub orphan_pods: Vec<String>,
+    /// Servers that were meant to be running and must be started again.
+    pub to_autostart: Vec<String>,
     /// Half-written backup files (`*.partial`) left by a crash, now deleted.
     pub partial_backups_removed: usize,
 }
@@ -61,6 +63,16 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
                     if self.rt.rcon(&server.id, "save-on").await.is_ok() {
                         report.autosave_restored.push(server.id.clone());
                     }
+                }
+                (ServerState::Running | ServerState::Starting | ServerState::Stopping, false)
+                    if server.auto_start =>
+                {
+                    // Power cut or reboot: the user wanted it running, so it is
+                    // not a failure. Put it back to a clean stop and queue a start.
+                    self.rt.remove(&server.id).await?;
+                    self.set_state(&server.id, &server.state, &ServerState::Stopped)?;
+                    self.event(Some(&server.id), "unclean_shutdown", "will start again");
+                    report.to_autostart.push(server.id.clone());
                 }
                 (ServerState::Running | ServerState::Starting | ServerState::Stopping, false) => {
                     let reason =
@@ -107,6 +119,17 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
         removed
     }
 
+    /// Starts the servers `reconcile` queued, one at a time (each start can
+    /// take a minute, and starting them all at once would fight over RAM).
+    pub async fn autostart(&self, ids: &[String]) {
+        for id in ids {
+            match self.start(id).await {
+                Ok(()) => tracing::info!(server = %id, "started again after reboot"),
+                Err(e) => tracing::error!(server = %id, error = %e, "auto-start failed"),
+            }
+        }
+    }
+
     /// Looks at every running server once; call it periodically.
     ///
     /// A server that died is restarted unless it already failed
@@ -138,6 +161,7 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
             let failed = self.transition(&row, ServerEvent::Failure(why.clone()))?;
             if failures >= self.cfg.max_consecutive_failures {
                 tracing::error!(server = %row.id, failures, "giving up restarting");
+                self.db.set_auto_start(&row.id, false)?;
                 self.rt.remove(&row.id).await?;
                 continue;
             }

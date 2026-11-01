@@ -40,6 +40,7 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
             rcon_password: new_rcon_password(),
             eula_accepted_at: self.now(),
             created_unix: self.now(),
+            auto_start: false,
         };
 
         let data = self.data_dir(&id);
@@ -107,6 +108,8 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
         match self.wait_ready(&row).await {
             Ok(()) => {
                 self.transition(&row, ServerEvent::PingOk)?;
+                // From now on the user wants this one up, even after a reboot.
+                self.db.set_auto_start(id, true)?;
                 Ok(())
             }
             Err(reason) => self.fail_start(&row, reason).await,
@@ -187,6 +190,8 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
             tracing::warn!(server = %row.id, error = %e, "cleanup after failed start");
         }
         self.bump_failures(&row.id);
+        // A server that cannot start must not retry itself at every boot.
+        self.db.set_auto_start(&row.id, false)?;
         self.transition(row, ServerEvent::Failure(reason.clone()))?;
         Err(ServiceError::StartFailed(reason))
     }
@@ -202,6 +207,8 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
         if row.state == ServerState::Stopped {
             return Ok(());
         }
+        // An explicit stop is the user's intent: do not bring it back at boot.
+        self.db.set_auto_start(id, false)?;
         let stopping = self.transition(&row, ServerEvent::StopRequested)?;
         let row = ServerRow {
             state: stopping,
