@@ -1,0 +1,39 @@
+{
+ "0a4b8a14e847b71567b557b43d906c2167fa263eeeef37454a821ba286996e3da1616dc2d9647736d28a250d5ecf400541cae808359b29a62324a8a6f2ad5e30": {
+  "game_versions": [
+   "26.3"
+  ],
+  "loaders": [
+   "fabric"
+  ],
+  "environment": "client_or_server_prefers_both",
+  "id": "EQKgpeKu",
+  "project_id": "P7dR8mSH",
+  "author_id": "JZA4dW8o",
+  "featured": false,
+  "name": "[26.3] Fabric API 0.165.0+26.3",
+  "version_number": "0.165.0+26.3",
+  "changelog": "- Bump version (modmuss50)\n- [26.3] Ice tag and datagen util (#5649 Backport) (#5660) (Cassian)\n- Add VanillaHudElements.INFO_BAR_FOREGROUND (#5659) (modmuss)\n- Add no-op run() impl in SimpleFabricLoo...[TRIMMED]",
+  "changelog_url": null,
+  "date_published": "2026-10-23T08:35:46.648085Z",
+  "downloads": 2272047,
+  "version_type": "release",
+  "status": "listed",
+  "requested_status": null,
+  "files": [
+   {
+    "id": "LP2w5f7p",
+    "hashes": {
+     "sha512": "0a4b8a14e847b71567b557b43d906c2167fa263eeeef37454a821ba286996e3da1616dc2d9647736d28a250d5ecf400541cae808359b29a62324a8a6f2ad5e30",
+     "sha1": "8f8a23d6c9fbf7b075b31b4fb0a1007b0488d1d2"
+    },
+    "url": "https://cdn.modrinth.com/data/P7dR8mSH/versions/EQKgpeKu/fabric-api-0.165.0%2B26.3.jar",
+    "filename": "fabric-api-0.165.0+26.3.jar",
+    "primary": true,
+    "size": 1778588,
+    "file_type": null
+   }
+  ],
+  "dependencies": []
+ }
+}

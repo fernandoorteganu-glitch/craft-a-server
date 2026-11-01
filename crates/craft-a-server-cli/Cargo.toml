@@ -1,0 +1,21 @@
+[package]
+name = "craft-a-server-cli"
+description = "craft-a-server command line: servers, backups, logs, diagnose"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "craft-a-server"
+path = "src/main.rs"
+
+[dependencies]
+craft-a-server-core.workspace = true
+clap = { workspace = true, features = ["env"] }
+serde_json = "1.0.154"
+
+[lints]
+workspace = true

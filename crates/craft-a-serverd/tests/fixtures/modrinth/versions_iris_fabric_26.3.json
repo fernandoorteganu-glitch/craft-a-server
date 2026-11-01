@@ -1,0 +1,134 @@
+[
+ {
+  "game_versions": [
+   "26.3"
+  ],
+  "loaders": [
+   "fabric"
+  ],
+  "environment": "client_only",
+  "id": "vTN4NRGW",
+  "project_id": "YL57xq9U",
+  "author_id": "DzLrfrbK",
+  "featured": false,
+  "name": "Iris 1.11.7 for Fabric 26.3",
+  "version_number": "1.11.7+26.3-fabric",
+  "changelog": "Fixes a lot of 26.3 bugs",
+  "changelog_url": null,
+  "date_published": "2026-09-30T02:57:43.801379Z",
+  "downloads": 5166603,
+  "version_type": "release",
+  "status": "listed",
+  "requested_status": null,
+  "files": [
+   {
+    "id": "qytberMI",
+    "hashes": {
+     "sha512": "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+     "sha1": "fa03640ba1e4ef2f7ae3619c6373a06e46d0ba2c"
+    },
+    "url": "https://cdn.modrinth.com/data/YL57xq9U/versions/vTN4NRGW/iris-fabric-1.11.7%2Bmc26.3.jar",
+    "filename": "iris-fabric-1.11.7+mc26.3.jar",
+    "primary": true,
+    "size": 2850938,
+    "file_type": null
+   }
+  ],
+  "dependencies": [
+   {
+    "version_id": "bAZQdGpg",
+    "project_id": "AANobbMI",
+    "file_name": null,
+    "dependency_type": "required"
+   }
+  ]
+ },
+ {
+  "game_versions": [
+   "26.3"
+  ],
+  "loaders": [
+   "fabric"
+  ],
+  "environment": "client_only",
+  "id": "bAdKrpw8",
+  "project_id": "YL57xq9U",
+  "author_id": "DzLrfrbK",
+  "featured": false,
+  "name": "Iris 1.11.6 for Fabric 26.3",
+  "version_number": "1.11.6+26.3-fabric",
+  "changelog": "Fixes a bug stopping macOS from loading.",
+  "changelog_url": null,
+  "date_published": "2026-09-15T18:18:28.462406Z",
+  "downloads": 1784431,
+  "version_type": "release",
+  "status": "listed",
+  "requested_status": null,
+  "files": [
+   {
+    "id": "euHUhyQW",
+    "hashes": {
+     "sha512": "cd0fdc5a275a851b3d72e3e699c957671f293f5c87951736ad83adcdabaa58f533e9791110a227c7817b312269c32c063121b183a39d8c11a22e55d2c76cdb25",
+     "sha1": "63493cf8c58754bf6b9db297b895aeb17393e4df"
+    },
+    "url": "https://cdn.modrinth.com/data/YL57xq9U/versions/bAdKrpw8/iris-fabric-1.11.6%2Bmc26.3.jar",
+    "filename": "iris-fabric-1.11.6+mc26.3.jar",
+    "primary": true,
+    "size": 2849091,
+    "file_type": null
+   }
+  ],
+  "dependencies": [
+   {
+    "version_id": "bAZQdGpg",
+    "project_id": "AANobbMI",
+    "file_name": null,
+    "dependency_type": "required"
+   }
+  ]
+ },
+ {
+  "game_versions": [
+   "26.3"
+  ],
+  "loaders": [
+   "fabric"
+  ],
+  "environment": "client_only",
+  "id": "2nyTWtzT",
+  "project_id": "YL57xq9U",
+  "author_id": "DzLrfrbK",
+  "featured": false,
+  "name": "Iris 1.11.5 for Fabric 26.3",
+  "version_number": "1.11.5+26.3-fabric",
+  "changelog": "Updated to Minecraft 26.3.",
+  "changelog_url": null,
+  "date_published": "2026-09-15T16:20:05.133518Z",
+  "downloads": 26816,
+  "version_type": "release",
+  "status": "listed",
+  "requested_status": null,
+  "files": [
+   {
+    "id": "dL5pLvBb",
+    "hashes": {
+     "sha512": "15cadc3371c8b25e518899f4984a07b4221ec72158fb9e20a75ec3758c7305bd58dd78c634f4e99409e6459300b7086bc018c7c94f99ca5a0cf719fdaf9b807d",
+     "sha1": "cbbf54585ec4d46f56878b136bcd1f01313fc8c8"
+    },
+    "url": "https://cdn.modrinth.com/data/YL57xq9U/versions/2nyTWtzT/iris-fabric-1.11.5%2Bmc26.3.jar",
+    "filename": "iris-fabric-1.11.5+mc26.3.jar",
+    "primary": true,
+    "size": 2850919,
+    "file_type": null
+   }
+  ],
+  "dependencies": [
+   {
+    "version_id": "bAZQdGpg",
+    "project_id": "AANobbMI",
+    "file_name": null,
+    "dependency_type": "required"
+   }
+  ]
+ }
+]

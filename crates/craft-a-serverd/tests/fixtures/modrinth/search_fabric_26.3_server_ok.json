@@ -1,0 +1,283 @@
+{
+ "hits": [
+  {
+   "project_id": "P7dR8mSH",
+   "project_type": "mod",
+   "all_project_types": [
+    "mod"
+   ],
+   "slug": "fabric-api",
+   "author": "modmuss50",
+   "author_id": "JZA4dW8o",
+   "organization": null,
+   "organization_id": null,
+   "title": "Fabric API",
+   "description": "Lightweight and modular API providing common hooks and intercompatibility measures utilized by mods using the Fabric toolchain.",
+   "categories": [
+    "fabric",
+    "library"
+   ],
+   "display_categories": [
+    "fabric",
+    "library"
+   ],
+   "versions": [
+    "26.3-pre-3",
+    "26.3-rc-1",
+    "26.3-rc-2",
+    "26.3",
+    "26.4-snapshot-1",
+    "26.4-snapshot-2",
+    "26.4-snapshot-3",
+    "26.4-snapshot-4",
+    "26.4-snapshot-5",
+    "26.4-snapshot-6"
+   ],
+   "downloads": 294620270,
+   "follows": 37432,
+   "icon_url": "https://cdn.modrinth.com/data/P7dR8mSH/icon.png",
+   "date_created": "2021-01-22T11:04:41.419169+00:00",
+   "date_modified": "2026-10-27T17:15:43.902761+00:00",
+   "latest_version": "EQKgpeKu",
+   "license": "Apache-2.0",
+   "client_side": "optional",
+   "server_side": "optional",
+   "environment": [
+    "client_or_server_prefers_both"
+   ],
+   "disclosure_types": [],
+   "gallery": [],
+   "featured_gallery": null,
+   "color": 12367004
+  },
+  {
+   "project_id": "9s6osm5g",
+   "project_type": "mod",
+   "all_project_types": [
+    "mod"
+   ],
+   "slug": "cloth-config",
+   "author": "shedaniel",
+   "author_id": "1Hsaf75m",
+   "organization": null,
+   "organization_id": null,
+   "title": "Cloth Config API",
+   "description": "Configuration Library for Minecraft Mods",
+   "categories": [
+    "fabric",
+    "forge",
+    "library",
+    "neoforge"
+   ],
+   "display_categories": [
+    "fabric",
+    "forge",
+    "library",
+    "neoforge"
+   ],
+   "versions": [
+    "1.21.7",
+    "1.21.8",
+    "1.21.9",
+    "1.21.10",
+    "1.21.11",
+    "26.1",
+    "26.1.1",
+    "26.1.2",
+    "26.2",
+    "26.3"
+   ],
+   "downloads": 189247014,
+   "follows": 17048,
+   "icon_url": "https://cdn.modrinth.com/data/9s6osm5g/ed8a2316cbb6f4fc5f510e8e13a59a85cbbbff4d_96.webp",
+   "date_created": "2022-04-21T10:29:41.555173+00:00",
+   "date_modified": "2026-09-23T07:00:50.158851+00:00",
+   "latest_version": "fg2uyxOW",
+   "license": "LGPL-3.0-only",
+   "client_side": "optional",
+   "server_side": "optional",
+   "environment": [
+    "client_or_server_prefers_both"
+   ],
+   "disclosure_types": [],
+   "gallery": [],
+   "featured_gallery": "https://cdn.modrinth.com/data/9s6osm5g/images/baa0dc605540953f5262f24109ec7837c090a04c.png",
+   "color": 11654752
+  },
+  {
+   "project_id": "uXXizFIs",
+   "project_type": "mod",
+   "all_project_types": [
+    "mod"
+   ],
+   "slug": "ferrite-core",
+   "author": "malte0811",
+   "author_id": "cXzLZ8YY",
+   "organization": null,
+   "organization_id": null,
+   "title": "FerriteCore",
+   "description": "Memory usage optimizations",
+   "categories": [
+    "fabric",
+    "forge",
+    "neoforge",
+    "optimization",
+    "quilt",
+    "utility"
+   ],
+   "display_categories": [
+    "fabric",
+    "forge",
+    "neoforge",
+    "optimization",
+    "quilt",
+    "utility"
+   ],
+   "versions": [
+    "1.21.7",
+    "1.21.8",
+    "1.21.9",
+    "1.21.10",
+    "1.21.11",
+    "26.1",
+    "26.1.1",
+    "26.1.2",
+    "26.2",
+    "26.3"
+   ],
+   "downloads": 170344507,
+   "follows": 16836,
+   "icon_url": "https://cdn.modrinth.com/data/uXXizFIs/222a126f26f8f9ae1eb339f3b767677f18bff31f_96.webp",
+   "date_created": "2021-04-03T07:04:43.971189+00:00",
+   "date_modified": "2026-03-24T18:31:48.941879+00:00",
+   "latest_version": "d5ddUdiB",
+   "license": "MIT",
+   "client_side": "optional",
+   "server_side": "optional",
+   "environment": [
+    "client_or_server"
+   ],
+   "disclosure_types": [],
+   "gallery": [],
+   "featured_gallery": null,
+   "color": 5129796
+  },
+  {
+   "project_id": "gvQqBUqZ",
+   "project_type": "mod",
+   "all_project_types": [
+    "mod"
+   ],
+   "slug": "lithium",
+   "author": "jellysquid3",
+   "author_id": "TEZXhE2U",
+   "organization": "CaffeineMC",
+   "organization_id": "LjcZDkRW",
+   "title": "Lithium",
+   "description": "No-compromises game logic optimization mod, useful for both single-player games and multi-player servers.",
+   "categories": [
+    "fabric",
+    "neoforge",
+    "optimization",
+    "quilt"
+   ],
+   "display_categories": [
+    "fabric",
+    "neoforge",
+    "optimization",
+    "quilt"
+   ],
+   "versions": [
+    "1.21.7",
+    "1.21.8",
+    "1.21.9",
+    "1.21.10",
+    "1.21.11",
+    "26.1",
+    "26.1.1",
+    "26.1.2",
+    "26.2",
+    "26.3"
+   ],
+   "downloads": 145995160,
+   "follows": 24167,
+   "icon_url": "https://cdn.modrinth.com/data/gvQqBUqZ/bcc8686c13af0143adf4285d741256af824f70b7_96.webp",
+   "date_created": "2021-01-03T00:56:52.292581+00:00",
+   "date_modified": "2026-10-28T22:31:10.526811+00:00",
+   "latest_version": "fWv5bnZk",
+   "license": "LGPL-3.0-only",
+   "client_side": "optional",
+   "server_side": "optional",
+   "environment": [
+    "client_or_server_prefers_both"
+   ],
+   "disclosure_types": [],
+   "gallery": [],
+   "featured_gallery": null,
+   "color": 15395571
+  },
+  {
+   "project_id": "1eAoo2KR",
+   "project_type": "mod",
+   "all_project_types": [
+    "mod"
+   ],
+   "slug": "yacl",
+   "author": "isxander",
+   "author_id": "nyx2i4fB",
+   "organization": null,
+   "organization_id": null,
+   "title": "YetAnotherConfigLib (YACL)",
+   "description": "A builder-based configuration library for Minecraft!",
+   "categories": [
+    "fabric",
+    "forge",
+    "library",
+    "management",
+    "neoforge",
+    "quilt",
+    "utility"
+   ],
+   "display_categories": [
+    "fabric",
+    "forge",
+    "library",
+    "management",
+    "neoforge",
+    "quilt",
+    "utility"
+   ],
+   "versions": [
+    "26.1",
+    "26.1.1",
+    "26.1.2",
+    "26.2-snapshot-2",
+    "26.2",
+    "26.3-snapshot-1",
+    "26.3",
+    "26.4-snapshot-1",
+    "26.4-snapshot-2",
+    "26.4-snapshot-3"
+   ],
+   "downloads": 138215441,
+   "follows": 9860,
+   "icon_url": "https://cdn.modrinth.com/data/1eAoo2KR/08c0cd32515e260f4bb20bbc0696510041523f9a_96.webp",
+   "date_created": "2022-09-05T13:15:27.359550+00:00",
+   "date_modified": "2026-10-06T14:42:37.353645+00:00",
+   "latest_version": "s9SjoFu1",
+   "license": "LGPL-3.0-or-later",
+   "client_side": "optional",
+   "server_side": "optional",
+   "environment": [
+    "client_or_server"
+   ],
+   "disclosure_types": [],
+   "gallery": [],
+   "featured_gallery": "https://cdn.modrinth.com/data/1eAoo2KR/images/5862570281f5109119c11f21a1bba52b6a2ab17f_350.webp",
+   "color": 2236961
+  }
+ ],
+ "offset": 0,
+ "limit": 5,
+ "total_hits": 5945
+}

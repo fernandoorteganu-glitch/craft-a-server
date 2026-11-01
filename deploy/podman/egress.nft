@@ -1,0 +1,19 @@
+# Egress policy for a server pod's network namespace (see docs/spikes/network-containment.md).
+# Applied by craft-a-serverd from OUTSIDE the container, into the pod's netns, after the pod
+# infra container is up and BEFORE the game container starts. Fail closed: if applying this
+# fails, the server must not start.
+#
+# Allows: the internet and DNS via the pasta forwarder (169.254.1.1), replies to inbound
+# connections. Drops: everything addressed to loopback-other, RFC1918, CGNAT, link-local
+# (incl. cloud metadata), multicast/reserved, and the IPv6 equivalents.
+table inet craft_egress {
+  chain out {
+    type filter hook output priority 0; policy accept;
+    oif "lo" accept
+    ct state established,related accept
+    ip daddr 169.254.1.1 udp dport 53 accept
+    ip daddr 169.254.1.1 tcp dport 53 accept
+    ip daddr { 0.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24, 192.168.0.0/16, 198.18.0.0/15, 224.0.0.0/3 } counter drop
+    ip6 daddr { ::/128, ::1/128, fc00::/7, fe80::/10, ff00::/8 } counter drop
+  }
+}

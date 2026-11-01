@@ -1,0 +1,187 @@
+{
+ "hits": [
+  {
+   "project_id": "AANobbMI",
+   "project_type": "mod",
+   "all_project_types": [
+    "mod"
+   ],
+   "slug": "sodium",
+   "author": "jellysquid3",
+   "author_id": "TEZXhE2U",
+   "organization": "CaffeineMC",
+   "organization_id": "LjcZDkRW",
+   "title": "Sodium",
+   "description": "A high-performance rendering engine replacement for Minecraft, which greatly improves frame rates and reduces micro-stutter.",
+   "categories": [
+    "fabric",
+    "neoforge",
+    "optimization",
+    "quilt"
+   ],
+   "display_categories": [
+    "fabric",
+    "neoforge",
+    "optimization",
+    "quilt"
+   ],
+   "versions": [
+    "1.21.11",
+    "26.1",
+    "26.1.1",
+    "26.1.2",
+    "26.2-rc-1",
+    "26.2-rc-2",
+    "26.2",
+    "26.3-rc-1",
+    "26.3-rc-2",
+    "26.3"
+   ],
+   "downloads": 258125185,
+   "follows": 42362,
+   "icon_url": "https://cdn.modrinth.com/data/AANobbMI/295862f4724dc3f78df3447ad6072b2dcd3ef0c9_96.webp",
+   "date_created": "2021-01-03T00:53:34.185936+00:00",
+   "date_modified": "2026-10-15T17:51:36.063140+00:00",
+   "latest_version": "g6ju16VJ",
+   "license": "LicenseRef-Polyform-Shield-1.0.0",
+   "client_side": "required",
+   "server_side": "unsupported",
+   "environment": [
+    "client_only"
+   ],
+   "disclosure_types": [],
+   "gallery": [
+    "https://cdn.modrinth.com/data/AANobbMI/images/d84313e6f57dc9e7896961dbd2dfc2689d482758_350.webp",
+    "https://cdn.modrinth.com/data/AANobbMI/images/6b0e58705156ba67a6d97a74b9f9ac05da69f502_350.webp"
+   ],
+   "featured_gallery": null,
+   "color": 8703084
+  },
+  {
+   "project_id": "YL57xq9U",
+   "project_type": "mod",
+   "all_project_types": [
+    "mod"
+   ],
+   "slug": "iris",
+   "author": "coderbot",
+   "author_id": "v7k4QluE",
+   "organization": null,
+   "organization_id": null,
+   "title": "Iris Shaders",
+   "description": "A modern shader pack loader for Minecraft intended to be compatible with existing OptiFine shader packs",
+   "categories": [
+    "decoration",
+    "fabric",
+    "neoforge",
+    "optimization",
+    "quilt"
+   ],
+   "display_categories": [
+    "decoration",
+    "fabric",
+    "neoforge",
+    "optimization",
+    "quilt"
+   ],
+   "versions": [
+    "1.21.7",
+    "1.21.8",
+    "1.21.9",
+    "1.21.10",
+    "1.21.11",
+    "26.1",
+    "26.1.1",
+    "26.1.2",
+    "26.2",
+    "26.3"
+   ],
+   "downloads": 199605819,
+   "follows": 30427,
+   "icon_url": "https://cdn.modrinth.com/data/YL57xq9U/18d0e7f076d3d6ed5bedd472b853909aac5da202_96.webp",
+   "date_created": "2021-05-27T05:11:15.690120+00:00",
+   "date_modified": "2026-09-30T02:58:18.855057+00:00",
+   "latest_version": "vTN4NRGW",
+   "license": "LGPL-3.0-only",
+   "client_side": "required",
+   "server_side": "unsupported",
+   "environment": [
+    "client_only"
+   ],
+   "disclosure_types": [
+    "ai_content",
+    "ai_content_code"
+   ],
+   "gallery": [
+    "https://cdn.modrinth.com/data/YL57xq9U/images/d69f13ea9889652c02f8cf91a3e55c8ef7cd6316_350.webp",
+    "https://cdn.modrinth.com/data/YL57xq9U/images/44245979cecbf237a3b26f375a0dc4f3a21dcf3d_350.webp"
+   ],
+   "featured_gallery": "https://cdn.modrinth.com/data/YL57xq9U/images/f47cea26f135d74c2d69df0a1806751818d705d3_350.webp",
+   "color": 263172
+  },
+  {
+   "project_id": "NNAgCjsB",
+   "project_type": "mod",
+   "all_project_types": [
+    "mod"
+   ],
+   "slug": "entityculling",
+   "author": "tr7zw",
+   "author_id": "Qnt13hO8",
+   "organization": null,
+   "organization_id": null,
+   "title": "Entity Culling",
+   "description": "Using async path-tracing to hide Block-/Entities that are not visible",
+   "categories": [
+    "babric",
+    "fabric",
+    "forge",
+    "neoforge",
+    "optimization",
+    "quilt"
+   ],
+   "display_categories": [
+    "babric",
+    "fabric",
+    "forge",
+    "neoforge",
+    "optimization",
+    "quilt"
+   ],
+   "versions": [
+    "1.21.7",
+    "1.21.8",
+    "1.21.9",
+    "1.21.10",
+    "1.21.11",
+    "26.1",
+    "26.1.1",
+    "26.1.2",
+    "26.2",
+    "26.3"
+   ],
+   "downloads": 193728324,
+   "follows": 18105,
+   "icon_url": "https://cdn.modrinth.com/data/NNAgCjsB/7873452d6cede4daed12da3d7d8c193ab88b4fd6_96.webp",
+   "date_created": "2022-05-25T10:09:09.784330+00:00",
+   "date_modified": "2026-10-08T16:52:20.326661+00:00",
+   "latest_version": "X1g3VhTx",
+   "license": "LicenseRef-tr7zw-Protective-License",
+   "client_side": "required",
+   "server_side": "unsupported",
+   "environment": [
+    "client_only"
+   ],
+   "disclosure_types": [
+    "telemetry",
+    "telemetry_opt_in"
+   ],
+   "gallery": [],
+   "featured_gallery": "https://cdn.modrinth.com/data/NNAgCjsB/images/65781fbd7cda31b8c8e4a8def40bf445c10a1562.gif",
+   "color": 6052955
+  }
+ ],
+ "offset": 0,
+ "limit": 3,
+ "total_hits": 2908
+}

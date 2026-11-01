@@ -1,0 +1,230 @@
+[
+ {
+  "game_versions": [
+   "26.3"
+  ],
+  "loaders": [
+   "fabric",
+   "quilt"
+  ],
+  "environment": "unknown",
+  "id": "QMYktnGo",
+  "project_id": "OhduvhIc",
+  "author_id": "BTUi4ZVT",
+  "featured": false,
+  "name": "Veinminer Fabric - 2.13.0",
+  "version_number": "2.13.0",
+  "changelog": "- Add `/veinminer enchant ...` subcommand to edit the enchantment\n- Allow groups to be limited to a min required enchant level (see overrides)",
+  "changelog_url": null,
+  "date_published": "2026-10-20T13:10:05.154489Z",
+  "downloads": 2342034,
+  "version_type": "release",
+  "status": "listed",
+  "requested_status": null,
+  "files": [
+   {
+    "id": "9aztXYoY",
+    "hashes": {
+     "sha1": "68c4989fbc568125bc5c570b1245c8d7161a9122",
+     "sha512": "6225e092567ec578834585f8f95bc63848718e2b31757982934c69b5dd39c3b4f5c5ee2a95447184a476435bd5ce1fb60df6289d99c06562e337de9e6801ac52"
+    },
+    "url": "https://cdn.modrinth.com/data/OhduvhIc/versions/QMYktnGo/veinminer-fabric-2.13.0.jar",
+    "filename": "veinminer-fabric-2.13.0.jar",
+    "primary": true,
+    "size": 671493,
+    "file_type": null
+   }
+  ],
+  "dependencies": [
+   {
+    "version_id": null,
+    "project_id": "P7dR8mSH",
+    "file_name": null,
+    "dependency_type": "required"
+   },
+   {
+    "version_id": null,
+    "project_id": "dxa0Bm8m",
+    "file_name": null,
+    "dependency_type": "optional"
+   },
+   {
+    "version_id": null,
+    "project_id": "Ha28R6CL",
+    "file_name": null,
+    "dependency_type": "required"
+   }
+  ]
+ },
+ {
+  "game_versions": [
+   "26.3"
+  ],
+  "loaders": [
+   "fabric",
+   "quilt"
+  ],
+  "environment": "unknown",
+  "id": "Hpw3qIxS",
+  "project_id": "OhduvhIc",
+  "author_id": "BTUi4ZVT",
+  "featured": false,
+  "name": "Veinminer Fabric - 2.12.3",
+  "version_number": "2.12.3",
+  "changelog": "- Fix empty hand support\n- Fix break sounds not playing on fabric & neo\n- Fix groups not removing properly",
+  "changelog_url": null,
+  "date_published": "2026-09-30T11:14:09.370250Z",
+  "downloads": 3126961,
+  "version_type": "release",
+  "status": "listed",
+  "requested_status": null,
+  "files": [
+   {
+    "id": "wTib7vsj",
+    "hashes": {
+     "sha1": "6ba68b908317de338f4f65e852cbdd45212e8bd3",
+     "sha512": "ec7f92629a6010bf664337c9d4334370447dcbc6eb2b1802ef6127bb0e0c858b7d56eb19d372bc597e8783034f8fb90f0c66d044333af23cf6bc24f15dac038f"
+    },
+    "url": "https://cdn.modrinth.com/data/OhduvhIc/versions/Hpw3qIxS/veinminer-fabric-2.12.3.jar",
+    "filename": "veinminer-fabric-2.12.3.jar",
+    "primary": true,
+    "size": 524474,
+    "file_type": null
+   }
+  ],
+  "dependencies": [
+   {
+    "version_id": null,
+    "project_id": "Ha28R6CL",
+    "file_name": null,
+    "dependency_type": "required"
+   },
+   {
+    "version_id": null,
+    "project_id": "dxa0Bm8m",
+    "file_name": null,
+    "dependency_type": "optional"
+   },
+   {
+    "version_id": null,
+    "project_id": "P7dR8mSH",
+    "file_name": null,
+    "dependency_type": "required"
+   }
+  ]
+ },
+ {
+  "game_versions": [
+   "26.3"
+  ],
+  "loaders": [
+   "fabric",
+   "quilt"
+  ],
+  "environment": "unknown",
+  "id": "G10nvigw",
+  "project_id": "OhduvhIc",
+  "author_id": "BTUi4ZVT",
+  "featured": false,
+  "name": "Veinminer Fabric - 2.12.2",
+  "version_number": "2.12.2",
+  "changelog": "- Allow empty hands to veinmine",
+  "changelog_url": null,
+  "date_published": "2026-09-23T21:28:12.983628Z",
+  "downloads": 391375,
+  "version_type": "release",
+  "status": "listed",
+  "requested_status": null,
+  "files": [
+   {
+    "id": "zTt4UaBV",
+    "hashes": {
+     "sha512": "5e31863298a36579d2eb66981709b9eed79ca0157531b44f8178977c421668010d36ef445c003215c283eacc0f6b213e7b2970c83902540144aad8dffb240fc0",
+     "sha1": "04739b04815269648fb885526b2c2ff2266e0cc5"
+    },
+    "url": "https://cdn.modrinth.com/data/OhduvhIc/versions/G10nvigw/veinminer-fabric-2.12.2.jar",
+    "filename": "veinminer-fabric-2.12.2.jar",
+    "primary": true,
+    "size": 524196,
+    "file_type": null
+   }
+  ],
+  "dependencies": [
+   {
+    "version_id": null,
+    "project_id": "Ha28R6CL",
+    "file_name": null,
+    "dependency_type": "required"
+   },
+   {
+    "version_id": null,
+    "project_id": "P7dR8mSH",
+    "file_name": null,
+    "dependency_type": "required"
+   },
+   {
+    "version_id": null,
+    "project_id": "dxa0Bm8m",
+    "file_name": null,
+    "dependency_type": "optional"
+   }
+  ]
+ },
+ {
+  "game_versions": [
+   "26.3"
+  ],
+  "loaders": [
+   "fabric",
+   "quilt"
+  ],
+  "environment": "unknown",
+  "id": "ILeKHqoi",
+  "project_id": "OhduvhIc",
+  "author_id": "BTUi4ZVT",
+  "featured": false,
+  "name": "Veinminer Fabric - 2.12.1",
+  "version_number": "2.12.1",
+  "changelog": "- Raise paper event priority to MONITOR\n- Let neo/fabric block breaking trigger normal breaking events\n- Fix toggle hotkey eating scroll",
+  "changelog_url": null,
+  "date_published": "2026-09-16T11:28:38.402354Z",
+  "downloads": 279611,
+  "version_type": "release",
+  "status": "listed",
+  "requested_status": null,
+  "files": [
+   {
+    "id": "798IfUlB",
+    "hashes": {
+     "sha512": "7d47c72cf46dba77465f99ac79dad9841d164091757206b0b6d49acb8cc484814e5cf31ef7d7f4aff36716f52d7e9a26c8ac5b0b5317c03661da77b8f2eac22f",
+     "sha1": "395d9d5382acd076433e7ffcc536d74c241d18c7"
+    },
+    "url": "https://cdn.modrinth.com/data/OhduvhIc/versions/ILeKHqoi/veinminer-fabric-2.12.1.jar",
+    "filename": "veinminer-fabric-2.12.1.jar",
+    "primary": true,
+    "size": 524181,
+    "file_type": null
+   }
+  ],
+  "dependencies": [
+   {
+    "version_id": null,
+    "project_id": "dxa0Bm8m",
+    "file_name": null,
+    "dependency_type": "optional"
+   },
+   {
+    "version_id": null,
+    "project_id": "Ha28R6CL",
+    "file_name": null,
+    "dependency_type": "required"
+   },
+   {
+    "version_id": null,
+    "project_id": "P7dR8mSH",
+    "file_name": null,
+    "dependency_type": "required"
+   }
+  ]
+ }
+]

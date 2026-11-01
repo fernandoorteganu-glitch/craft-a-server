@@ -1,0 +1,40 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/craft-a-server-core",
+    "crates/craft-a-serverd",
+    "crates/craft-a-server-cli",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.90"
+license = "Apache-2.0"
+repository = "https://github.com/OWNER/craft-a-server"
+publish = false
+
+[workspace.dependencies]
+craft-a-server-core = { path = "crates/craft-a-server-core" }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+clap = { version = "4", features = ["derive"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+dbg_macro = "deny"
+todo = "deny"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"

@@ -1,0 +1,41 @@
+# Captured 2026-11-01 in WSL Debian x86_64, playit v1.2.0 (sha256 verified against GitHub release digest), user craft-a-server.
+# Claim codes below are throwaway and were never visited/claimed. No secret was ever created.
+
+## $ playitd --socket-path S --log-path L      (no secret configured; PLAYIT_LOG=debug)  -> L:
+2026-11-01T20:35:29.754664Z  INFO playitd::daemon: Starting playitd socket_path=Some(".../playitd.sock") secret_path=Some(".../home/.config/playit_gg/playit.toml") version=1.2.0
+2026-11-01T20:35:29.755066Z  INFO playitd::daemon: Waiting for frontend secret provisioning over IPC secret_path=.../home/.config/playit_gg/playit.toml
+# stdout of the daemon: empty.  Without --socket-path (non-root, no /run/playit): "playitd error: IPC error: Failed to bind to socket: No such file or directory (os error 2)", exit 1.
+
+## $ playit-cli --socket-path S status
+playitd daemon status for socket .../playitd.sock:
+  Phase: waiting for secret
+  PID: 4633
+  Uptime: 5 seconds
+  Version: 1.2.0
+  Socket: .../playitd.sock
+  Secret path: .../home/.config/playit_gg/playit.toml
+  Secret configured: false
+  IPC version: 2
+  Capabilities: ["structured_responses", "stream_events", "lifecycle_state", "rich_status", "secret_provisioning"]
+
+## $ playit-cli --socket-path S setup          (stdout; the line pair is printed twice)
+Open this link to finish setting up playit:
+https://playit.gg/claim/b2f2d32494
+
+## $ playit-cli claim generate
+cc62a02e22
+## $ playit-cli claim url cc62a02e22
+https://playit.gg/claim/cc62a02e22
+## $ playit-cli claim exchange <unknown code> --wait 5
+Preparing setup...
+
+Error: Fail(CodeExpired)
+## $ playit-cli claim exchange <fresh unvisited code> --wait 8     (killed by external timeout at 12s, rc=124: --wait did not bound it)
+Open this link to finish setting up playit:
+https://playit.gg/claim/424735c8e4
+Open this link to finish setting up playit:
+https://playit.gg/claim/424735c8e4
+
+## shutdown (SIGTERM)
+ INFO playitd: Received shutdown signal, shutting down signal="SIGTERM"
+ INFO playitd::daemon: playitd shutdown before setup completed

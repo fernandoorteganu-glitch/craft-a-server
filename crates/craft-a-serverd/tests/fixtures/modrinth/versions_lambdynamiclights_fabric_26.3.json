@@ -1,0 +1,60 @@
+[
+ {
+  "game_versions": [
+   "26.3"
+  ],
+  "loaders": [
+   "fabric",
+   "neoforge",
+   "quilt"
+  ],
+  "environment": "client_only",
+  "id": "rylKnJ4M",
+  "project_id": "yBW8D80W",
+  "author_id": "rRnTb0fG",
+  "featured": false,
+  "name": "LambDynamicLights 4.13.0 (26.3)",
+  "version_number": "4.13.0+26.3",
+  "changelog": "- Updated to Minecraft 26.3.\n- Updated [SpruceUI].\n- Updated [Yumi Minecraft Libraries: Foundation].\n\n[SpruceUI]: https://github.com/LambdAurora/SpruceUI \"SpruceUI page\"\n[pridelib]: https://github.com...[TRIMMED]",
+  "changelog_url": null,
+  "date_published": "2026-09-15T17:28:28.029332Z",
+  "downloads": 2648693,
+  "version_type": "release",
+  "status": "listed",
+  "requested_status": null,
+  "files": [
+   {
+    "id": "sXKUp7QY",
+    "hashes": {
+     "sha512": "67c37ca7d619bd7f2b0dc02217070c20e34fb3bb3363d4e23f5ef9ca90b1b58adb223fab73639a3499d366497316f1eb297d2759f3ffb976467b4759f784619d",
+     "sha1": "18c8ab40f03219bfcf809a83db6e3958ed8bb866"
+    },
+    "url": "https://cdn.modrinth.com/data/yBW8D80W/versions/rylKnJ4M/lambdynamiclights-4.13.0%2B26.3.jar",
+    "filename": "lambdynamiclights-4.13.0+26.3.jar",
+    "primary": true,
+    "size": 1345715,
+    "file_type": null
+   }
+  ],
+  "dependencies": [
+   {
+    "version_id": null,
+    "project_id": "P7dR8mSH",
+    "file_name": null,
+    "dependency_type": "required"
+   },
+   {
+    "version_id": null,
+    "project_id": "PxQSWIcD",
+    "file_name": null,
+    "dependency_type": "incompatible"
+   },
+   {
+    "version_id": null,
+    "project_id": "reCfnRvJ",
+    "file_name": null,
+    "dependency_type": "incompatible"
+   }
+  ]
+ }
+]

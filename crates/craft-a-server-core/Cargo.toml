@@ -1,0 +1,21 @@
+[package]
+name = "craft-a-server-core"
+description = "Shared types for craft-a-server: configuration, errors, server model, tunnel interface"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json = "1.0.154"
+thiserror.workspace = true
+toml = "1.1.8"
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+proptest = "1.12.0"

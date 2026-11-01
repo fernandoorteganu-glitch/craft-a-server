@@ -1,0 +1,5 @@
+/target
+*.partial
+.env
+*.key
+*.sec

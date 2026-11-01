@@ -1,0 +1,85 @@
+# craft-a-server daemon (development unit, Phase 1).
+#
+# Not installed by the repo. To try it by hand, as root:
+#   install -m 0755 target/release/craft-a-serverd target/release/craft-a-server /usr/local/bin/
+#   useradd --system --create-home --home-dir /var/lib/craft-a-server \
+#           --shell /usr/sbin/nologin craft-a-server
+#   # rootless Podman needs subordinate ids and a session that survives logout:
+#   usermod --add-subuids 100000-165535 --add-subgids 100000-165535 craft-a-server
+#   loginctl enable-linger craft-a-server        # creates /run/user/<uid> at boot
+#   install -m 0644 deploy/systemd/craft-a-serverd.service /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now craft-a-serverd
+#
+# What was verified (Debian 13, systemd 257, Podman 5.4.2, kernel in WSL2) by
+# running the hardening properties below on a transient unit that started the
+# real daemon and drove it with the CLI (create, start, stop, backup):
+#
+# * %U / %u do NOT expand to the User= of a system service (they give 0 / root;
+#   checked), so the uid is taken from `id -u` in the shell wrapper below.
+# * NoNewPrivileges=yes is deliberately NOT set. Rootless Podman builds its user
+#   namespace with the setuid helpers newuidmap/newgidmap; with NoNewPrivileges
+#   they fail ("newuidmap: write to uid_map failed: Operation not permitted").
+#   Verified with a fresh user namespace.
+# * ProtectKernelTunables=yes breaks crun ("open /proc/sys/net/ipv4/
+#   ping_group_range: Read-only file system") and ProtectControlGroups=yes
+#   breaks container cgroup creation, so neither is set.
+# * No mount-namespace sandboxing (ProtectSystem, ProtectHome, PrivateTmp,
+#   ReadWritePaths, ProtectKernelModules). With PrivateTmp=yes the daemon could
+#   no longer start servers: pasta, Podman's rootless network helper, failed
+#   with "Failed to mount empty tmpfs for pivot_root(): No such file or
+#   directory" (reproduced). Probable cause: rootless Podman has a long-lived
+#   "pause" process whose user and mount namespace every later podman call
+#   joins, so it carries this unit's private mounts around. ProtectHome=yes
+#   also hides /run/user ("lstat /run/user/<uid>: permission denied"). The
+#   service user is unprivileged and owns only its state directory.
+# * ProtectHostname=yes breaks container start ("crun: sethostname: Operation
+#   not permitted"), so it is not set.
+# * MemoryDenyWriteExecute stays off: this unit execs podman/conmon/crun. The
+#   JVM runs inside the container, which this property does not touch.
+#
+# Not verified: a real reboot (ordering of linger's user-runtime-dir@<uid> against
+# this unit; the ExecStartPre waits up to 60 s for it), SELinux/AppArmor on other
+# distributions, and the unit on a machine with a different uid than 1000.
+#
+# The control socket is /run/craft-a-server/ctl.sock. RuntimeDirectoryMode=0750
+# makes the directory reachable by the craft-a-server group; the daemon serves
+# only its own uid and root (SO_PEERCRED), so to use the CLI run it as
+# craft-a-server (sudo -u craft-a-server craft-a-server list) or as root.
+
+[Unit]
+Description=craft-a-server daemon (Minecraft server manager)
+Documentation=https://github.com/OWNER/craft-a-server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=craft-a-server
+Group=craft-a-server
+WorkingDirectory=/var/lib/craft-a-server
+
+ExecStartPre=/bin/sh -c 'uid=$(id -u); i=0; while [ ! -d /run/user/$uid ] && [ $i -lt 60 ]; do i=$((i+1)); sleep 1; done; [ -d /run/user/$uid ] || { echo "/run/user/$uid is missing: run: loginctl enable-linger craft-a-server" >&2; exit 1; }'
+ExecStart=/bin/sh -c 'uid=$(id -u); export XDG_RUNTIME_DIR=/run/user/$uid DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$uid/bus; exec /usr/local/bin/craft-a-serverd --config /etc/craft-a-server/config.toml'
+Environment=RUST_LOG=info
+
+Restart=on-failure
+RestartSec=3
+# Game servers are containers owned by Podman and must survive a daemon restart.
+KillMode=process
+TimeoutStopSec=60
+
+RuntimeDirectory=craft-a-server
+RuntimeDirectoryMode=0750
+StateDirectory=craft-a-server
+StateDirectoryMode=0700
+
+# Hardening that does not touch mounts or capabilities Podman needs (see above).
+ProtectClock=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+MemoryDenyWriteExecute=no
+
+[Install]
+WantedBy=multi-user.target
