@@ -35,6 +35,13 @@ pub enum PanelError {
     PayloadTooLarge,
     #[error("bad request")]
     BadRequest,
+    /// The input was understood but is not acceptable (a screen's own,
+    /// already friendly, message).
+    #[error("invalid input")]
+    Invalid(String),
+    /// The action cannot happen in the current state (a friendly message).
+    #[error("conflict")]
+    Conflict(String),
     #[error("timeout")]
     Timeout,
     #[error("busy")]
@@ -57,7 +64,10 @@ impl PanelError {
                 StatusCode::FORBIDDEN
             }
             PanelError::HostRejected => StatusCode::MISDIRECTED_REQUEST,
-            PanelError::PairInvalid | PanelError::BadRequest => StatusCode::BAD_REQUEST,
+            PanelError::PairInvalid | PanelError::BadRequest | PanelError::Invalid(_) => {
+                StatusCode::BAD_REQUEST
+            }
+            PanelError::Conflict(_) => StatusCode::CONFLICT,
             PanelError::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
             PanelError::NotFound => StatusCode::NOT_FOUND,
             PanelError::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
@@ -82,6 +92,8 @@ impl PanelError {
             PanelError::MethodNotAllowed => "method_not_allowed",
             PanelError::PayloadTooLarge => "payload_too_large",
             PanelError::BadRequest => "bad_request",
+            PanelError::Invalid(_) => "invalid_input",
+            PanelError::Conflict(_) => "conflict",
             PanelError::Timeout => "timeout",
             PanelError::Busy => "busy",
             PanelError::Internal => "internal",
@@ -107,6 +119,7 @@ impl PanelError {
             PanelError::MethodNotAllowed => s::ERR_METHOD.to_owned(),
             PanelError::PayloadTooLarge => s::ERR_TOO_LARGE.to_owned(),
             PanelError::BadRequest => s::ERR_BAD_REQUEST.to_owned(),
+            PanelError::Invalid(message) | PanelError::Conflict(message) => message.clone(),
             PanelError::Timeout => s::ERR_TIMEOUT.to_owned(),
             PanelError::Busy => s::ERR_BUSY.to_owned(),
             PanelError::Internal => s::ERR_INTERNAL.to_owned(),

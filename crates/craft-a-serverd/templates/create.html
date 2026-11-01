@@ -1,0 +1,27 @@
+{% import "macros.html" as m %}
+<section class="card">
+<h1>{{ crate::panel::strings::CREATE_TITLE }}</h1>
+{% if let Some(message) = error %}
+<p class="alert" role="alert">{{ message }}</p>
+{% endif %}
+<form method="post" action="/server/create" class="form" autocomplete="off">
+{{ m::csrf_field(csrf_token) }}
+<label for="name">{{ crate::panel::strings::CREATE_NAME_LABEL }}</label>
+<input id="name" name="name" type="text" maxlength="48" value="{{ name }}" required>
+<label for="mc_version">{{ crate::panel::strings::CREATE_VERSION_LABEL }}</label>
+<input id="mc_version" name="mc_version" type="text" maxlength="32" value="{{ mc_version }}" autocapitalize="none" autocorrect="off" spellcheck="false" aria-describedby="mc_version_help" required>
+<p id="mc_version_help" class="note">{{ crate::panel::strings::CREATE_VERSION_HELP }}</p>
+<p>{{ crate::panel::strings::CREATE_MEMORY }}:
+{% if let Some(mem) = memory %}
+<strong>{{ mem.text }}</strong>
+{% if mem.low %}<span class="note">{{ crate::panel::strings::CREATE_MEMORY_LOW }}</span>{% endif %}
+{% else %}
+<span class="alert">{{ crate::panel::strings::CREATE_MEMORY_NONE }}</span>
+{% endif %}
+</p>
+<p class="note">{{ crate::panel::strings::CREATE_WHITELIST_NOTE }}</p>
+<label class="check" for="eula"><input id="eula" name="eula" type="checkbox" value="yes" required> {{ crate::panel::strings::CREATE_EULA_LABEL }}</label>
+<p class="note"><a href="{{ crate::panel::strings::CREATE_EULA_URL }}" rel="noopener noreferrer" target="_blank">{{ crate::panel::strings::CREATE_EULA_LINK }}</a></p>
+<button type="submit" class="btn">{{ crate::panel::strings::CREATE_SUBMIT }}</button>
+</form>
+</section>

@@ -1,0 +1,20 @@
+<section id="backup-list" class="card" hx-get="/partials/backups" hx-trigger="every 3s" hx-swap="outerHTML">
+{% include "banner.html" %}
+{% if backups.is_empty() %}
+<p>{{ crate::panel::strings::BACKUPS_EMPTY }}</p>
+{% else %}
+<ul class="list">
+{% for b in backups %}
+<li class="row">
+<div class="grow">
+<strong>{{ b.created }}</strong>
+<div class="note">{{ b.kind }} &middot; {{ b.size }}</div>
+</div>
+{% if banner.busy.is_none() %}
+<a class="btn btn-secondary" href="/backups/{{ b.id }}/restore">{{ crate::panel::strings::BACKUPS_RESTORE }}</a>
+{% endif %}
+</li>
+{% endfor %}
+</ul>
+{% endif %}
+</section>

@@ -11,6 +11,11 @@
   --accent-text: #ffffff;
   --danger-bg: #ffebe9;
   --danger-text: #82071e;
+  --danger: #b42318;
+  --ok-bg: #e6f4ea;
+  --ok-text: #14532d;
+  --busy-bg: #fff4d6;
+  --busy-text: #6b4500;
   color-scheme: light dark;
 }
 
@@ -25,6 +30,11 @@
     --accent-text: #08130c;
     --danger-bg: #3d1a1f;
     --danger-text: #ffb4ab;
+    --danger: #e5534b;
+    --ok-bg: #12301c;
+    --ok-text: #9be3b0;
+    --busy-bg: #3a2e0b;
+    --busy-text: #f5d37a;
   }
 }
 
@@ -71,13 +81,14 @@ body {
 
 .nav {
   display: flex;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 0 2px;
 }
 
 .nav a {
   min-height: 44px;
   min-width: 44px;
-  padding: 0 12px;
+  padding: 0 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -230,4 +241,154 @@ a:focus-visible {
 .htmx-request .htmx-indicator,
 .htmx-request.htmx-indicator {
   opacity: 1;
+}
+
+.nav a[aria-current="page"] {
+  color: var(--text);
+  box-shadow: inset 0 -3px 0 var(--accent);
+}
+
+.main > * + * {
+  margin-top: 16px;
+}
+
+h2 {
+  margin: 16px 0 8px;
+  font-size: 1.1rem;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.95em;
+}
+
+.btn-danger {
+  color: #ffffff;
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions form {
+  margin: 0;
+}
+
+.state {
+  padding: 2px 10px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.state-running {
+  color: var(--ok-text);
+  background: var(--ok-bg);
+}
+
+.state-failed {
+  color: var(--danger-text);
+  background: var(--danger-bg);
+}
+
+.state-starting,
+.state-stopping,
+.state-creating {
+  color: var(--busy-text);
+  background: var(--busy-bg);
+}
+
+.notice {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.notice-ok {
+  color: var(--ok-text);
+  background: var(--ok-bg);
+}
+
+.notice-err {
+  color: var(--danger-text);
+  background: var(--danger-bg);
+}
+
+.notice-busy {
+  color: var(--busy-text);
+  background: var(--busy-bg);
+}
+
+.facts {
+  margin: 0 0 12px;
+}
+
+.facts dt {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.facts dd {
+  margin: 0 0 8px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+
+.check input {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+
+.signout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+/* The log pane keeps the newest line in view without any script: with
+   column-reverse the scroll position starts at the bottom. */
+.log-scroll {
+  display: flex;
+  flex-direction: column-reverse;
+  max-height: 60vh;
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.log {
+  margin: 0;
+  padding: 8px;
+  font: 0.8rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.qr-box {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.qr {
+  width: min(100%, 240px);
+  height: auto;
+  border-radius: 8px;
+}
+
+input[type="text"]:invalid:not(:placeholder-shown) {
+  border-color: var(--danger);
 }

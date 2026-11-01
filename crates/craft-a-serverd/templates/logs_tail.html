@@ -1,0 +1,6 @@
+{% if lines.is_empty() %}
+<p class="note">{{ crate::panel::strings::LOGS_EMPTY }}</p>
+{% else %}
+<div class="log-scroll" tabindex="0" role="log" aria-label="{{ crate::panel::strings::LOGS_TITLE }}"><pre class="log">{% for l in lines %}{{ l }}
+{% endfor %}</pre></div>
+{% endif %}

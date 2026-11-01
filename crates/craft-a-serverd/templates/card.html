@@ -1,0 +1,43 @@
+{% import "macros.html" as m %}
+<section id="server-card" class="card" hx-get="/partials/server-card" hx-trigger="every 3s" hx-swap="outerHTML">
+{% include "banner.html" %}
+{% if let Some(s) = server %}
+<h1>{{ s.name }}</h1>
+<p><span class="state state-{{ s.state_key }}">{{ s.state_label }}</span> <span class="note">{{ crate::panel::strings::CARD_VERSION }} {{ s.mc_version }}</span></p>
+{% if let Some(why) = s.failure %}
+<p class="alert" role="alert"><strong>{{ crate::panel::strings::CARD_WHY_FAILED }}:</strong> {{ why }}</p>
+{% endif %}
+{% if let Some(players) = s.players %}
+<p>{{ crate::panel::strings::CARD_PLAYERS }}: <strong>{{ players }}</strong></p>
+{% endif %}
+<dl class="facts">
+<dt>{{ crate::panel::strings::CARD_ADDRESS_LOCAL }}</dt>
+<dd><code>{{ s.address_local }}</code></dd>
+{% if let Some(ip) = s.address_ip %}
+<dt>{{ crate::panel::strings::CARD_ADDRESS_IP }}</dt>
+<dd><code>{{ ip }}</code></dd>
+{% endif %}
+</dl>
+<div class="actions">
+{% if s.can_start %}
+<form method="post" action="/server/start">{{ m::csrf_field(csrf_token) }}<button type="submit" class="btn">{{ crate::panel::strings::CARD_START }}</button></form>
+{% endif %}
+{% if s.can_stop %}
+<form method="post" action="/server/stop">{{ m::csrf_field(csrf_token) }}<button type="submit" class="btn btn-secondary">{{ crate::panel::strings::CARD_STOP }}</button></form>
+{% endif %}
+{% if s.can_restart %}
+<form method="post" action="/server/restart">{{ m::csrf_field(csrf_token) }}<button type="submit" class="btn btn-secondary">{{ crate::panel::strings::CARD_RESTART }}</button></form>
+{% endif %}
+{% if s.can_reset %}
+<a class="btn" href="/server/reset">{{ crate::panel::strings::CARD_RESET }}</a>
+{% endif %}
+{% if s.can_delete %}
+<a class="btn btn-danger" href="/server/delete">{{ crate::panel::strings::CARD_DELETE }}</a>
+{% endif %}
+</div>
+{% else %}
+<h1>{{ crate::panel::strings::HOME_TITLE }}</h1>
+<p>{{ crate::panel::strings::CARD_NO_SERVER }}</p>
+<p><a class="btn" href="/create">{{ crate::panel::strings::CARD_CREATE_LINK }}</a></p>
+{% endif %}
+</section>

@@ -1,0 +1,12 @@
+{% import "macros.html" as m %}
+<section class="card">
+<h1>{{ crate::panel::strings::BACKUPS_TITLE }}</h1>
+<p class="note">{{ crate::panel::strings::BACKUPS_NOTE }}</p>
+{% if has_server && !busy %}
+<form method="post" action="/backups/create" class="form">
+{{ m::csrf_field(csrf_token) }}
+<button type="submit" class="btn">{{ crate::panel::strings::BACKUPS_CREATE }}</button>
+</form>
+{% endif %}
+</section>
+{{ list|safe }}

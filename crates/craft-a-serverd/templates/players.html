@@ -1,0 +1,30 @@
+{% import "macros.html" as m %}
+<section class="card">
+<h1>{{ crate::panel::strings::PLAYERS_TITLE }}</h1>
+{% include "banner.html" %}
+{% if !running %}
+<p>{{ crate::panel::strings::PLAYERS_NEED_RUNNING }}</p>
+{% else %}
+<form method="post" action="/players/whitelist/add" class="form" autocomplete="off">
+{{ m::csrf_field(csrf_token) }}
+<label for="add_name">{{ crate::panel::strings::PLAYERS_NAME_LABEL }}</label>
+<input id="add_name" name="name" type="text" minlength="3" maxlength="16" pattern="[A-Za-z0-9_]{3,16}" autocapitalize="none" autocorrect="off" spellcheck="false" aria-describedby="name_help" required>
+<p id="name_help" class="note">{{ crate::panel::strings::PLAYERS_NAME_HELP }}</p>
+<button type="submit" class="btn">{{ crate::panel::strings::PLAYERS_ADD }}</button>
+</form>
+<h2>{{ crate::panel::strings::PLAYERS_WHITELIST }}</h2>
+{% if players.is_empty() %}
+<p>{{ crate::panel::strings::PLAYERS_EMPTY }}</p>
+{% else %}
+<ul class="list">
+{% for p in players %}
+<li class="row">
+<div class="grow"><strong>{{ p }}</strong></div>
+<form method="post" action="/players/kick">{{ m::csrf_field(csrf_token) }}<input type="hidden" name="name" value="{{ p }}"><button type="submit" class="btn btn-secondary">{{ crate::panel::strings::PLAYERS_KICK }}</button></form>
+<form method="post" action="/players/whitelist/remove">{{ m::csrf_field(csrf_token) }}<input type="hidden" name="name" value="{{ p }}"><button type="submit" class="btn btn-secondary">{{ crate::panel::strings::PLAYERS_REMOVE }}</button></form>
+</li>
+{% endfor %}
+</ul>
+{% endif %}
+{% endif %}
+</section>

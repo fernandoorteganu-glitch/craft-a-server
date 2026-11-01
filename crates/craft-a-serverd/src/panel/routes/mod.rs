@@ -7,8 +7,13 @@
 //! [`Access::Session`] (fail closed).
 
 mod assets;
+mod backups;
 mod pair;
+mod players;
+mod screens;
+mod server;
 mod sessions;
+mod util;
 
 use std::collections::HashMap;
 
@@ -85,11 +90,86 @@ where
         .add("/static/{*file}", Access::Public, get(assets::serve_static))
         .add("/pair", Access::Public, get(pair::page))
         .add("/api/pair", Access::Pairing, post(pair::submit))
-        .add("/", Access::Session, get(sessions::home))
+        .add("/", Access::Session, get(server::home::<R, P>))
+        .add(
+            "/partials/server-card",
+            Access::Session,
+            get(server::card::<R, P>),
+        )
+        .add(
+            "/server/start",
+            Access::Session,
+            post(server::start::<R, P>),
+        )
+        .add("/server/stop", Access::Session, post(server::stop::<R, P>))
+        .add(
+            "/server/restart",
+            Access::Session,
+            post(server::restart::<R, P>),
+        )
+        .add(
+            "/server/reset",
+            Access::Session,
+            get(server::reset_confirm::<R, P>).post(server::reset::<R, P>),
+        )
+        .add(
+            "/server/delete",
+            Access::Session,
+            get(server::delete_confirm::<R, P>).post(server::delete::<R, P>),
+        )
+        .add(
+            "/create",
+            Access::Session,
+            get(server::create_page_get::<R, P>),
+        )
+        .add(
+            "/server/create",
+            Access::Session,
+            post(server::create::<R, P>),
+        )
+        .add("/backups", Access::Session, get(backups::page::<R, P>))
+        .add(
+            "/partials/backups",
+            Access::Session,
+            get(backups::list::<R, P>),
+        )
+        .add(
+            "/backups/create",
+            Access::Session,
+            post(backups::create::<R, P>),
+        )
+        .add(
+            "/backups/{id}/restore",
+            Access::Session,
+            get(backups::restore_confirm::<R, P>).post(backups::restore::<R, P>),
+        )
+        .add("/players", Access::Session, get(players::page::<R, P>))
+        .add(
+            "/players/whitelist/add",
+            Access::Session,
+            post(players::add::<R, P>),
+        )
+        .add(
+            "/players/whitelist/remove",
+            Access::Session,
+            post(players::remove::<R, P>),
+        )
+        .add(
+            "/players/kick",
+            Access::Session,
+            post(players::kick::<R, P>),
+        )
+        .add("/logs", Access::Session, get(screens::logs_page))
+        .add(
+            "/logs/tail",
+            Access::Session,
+            get(screens::logs_tail::<R, P>),
+        )
+        .add("/mods", Access::Session, get(screens::mods_page))
         .add(
             "/settings/devices",
             Access::Session,
-            get(sessions::devices_page),
+            get(screens::settings::<R, P>),
         )
         .add("/api/logout", Access::Session, post(sessions::logout))
         .add("/api/sessions", Access::Session, get(sessions::list))

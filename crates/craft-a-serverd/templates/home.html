@@ -1,10 +1,7 @@
 {% import "macros.html" as m %}
-<section class="card">
-<h1>{{ crate::panel::strings::HOME_TITLE }}</h1>
-<p>{{ crate::panel::strings::HOME_PAIRED_AS }} <strong>{{ device_name }}</strong></p>
-<p>{{ crate::panel::strings::HOME_PLACEHOLDER }}</p>
-<form method="post" action="/api/logout">
+{{ card|safe }}
+<form method="post" action="/api/logout" class="signout">
+<span class="note">{{ crate::panel::strings::HOME_PAIRED_AS }} {{ device_name }}</span>
 {{ m::csrf_field(csrf_token) }}
 <button type="submit" class="btn btn-secondary">{{ crate::panel::strings::LOGOUT }}</button>
 </form>
-</section>

@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicI64, AtomicU16, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU16, Ordering};
 
 use axum::Router;
 use axum::body::Body;
@@ -37,11 +37,27 @@ const T0: i64 = 1_700_000_000;
 const SESSION_TTL: i64 = 2_592_000;
 const GOOD_PEER: &str = "192.168.1.20:40000";
 
-struct NoProbe;
+/// A status probe that says "not up" until a test flips it.
+#[derive(Default)]
+struct NoProbe {
+    up: AtomicBool,
+}
+
+#[cfg_attr(not(unix), allow(dead_code))]
+impl NoProbe {
+    fn set_up(&self, up: bool) {
+        self.up.store(up, Ordering::SeqCst);
+    }
+}
 
 impl StatusProbe for NoProbe {
     async fn status(&self, _port: u16) -> Option<ServerStatus> {
-        None
+        self.up.load(Ordering::SeqCst).then(|| ServerStatus {
+            version_name: "26.3".into(),
+            protocol: 777,
+            players_online: 0,
+            players_max: 20,
+        })
     }
 }
 
@@ -59,6 +75,12 @@ fn harness() -> Harness {
 }
 
 fn harness_with(tweak: impl FnOnce(&mut Config)) -> Harness {
+    harness_full(tweak, Some(LAN_IP))
+}
+
+const LAN_IP: std::net::Ipv4Addr = std::net::Ipv4Addr::new(192, 168, 1, 50);
+
+fn harness_full(tweak: impl FnOnce(&mut Config), lan_ip: Option<std::net::Ipv4Addr>) -> Harness {
     let mut cfg = Config {
         data_dir: std::env::temp_dir(),
         ..Config::default()
@@ -83,10 +105,10 @@ fn harness_with(tweak: impl FnOnce(&mut Config)) -> Harness {
         Arc::new(cfg),
         Db::open_in_memory().expect("db"),
         Arc::new(FakeRuntime::new()),
-        Arc::new(NoProbe),
+        Arc::new(NoProbe::default()),
         env,
     ));
-    let app = router(PanelState::new(Arc::clone(&svc)));
+    let app = router(PanelState::new(Arc::clone(&svc)).with_lan_ip(lan_ip));
     Harness {
         svc,
         clock,
@@ -333,7 +355,7 @@ fn assert_security_headers(res: &Resp, what: &str) {
         Some("nosniff"),
         "{what}"
     );
-    assert_eq!(res.header("referrer-policy"), Some("no-referrer"), "{what}");
+    assert_eq!(res.header("referrer-policy"), Some("same-origin"), "{what}");
     assert_eq!(res.header("x-frame-options"), Some("DENY"), "{what}");
     assert_eq!(
         res.header("cross-origin-opener-policy"),
@@ -1237,6 +1259,41 @@ const EXPECTED_ROUTES: &[(&str, Access, &[Method])] = &[
     ("/pair", Access::Public, &[Method::GET]),
     ("/api/pair", Access::Pairing, &[Method::POST]),
     ("/", Access::Session, &[Method::GET]),
+    ("/partials/server-card", Access::Session, &[Method::GET]),
+    ("/server/start", Access::Session, &[Method::POST]),
+    ("/server/stop", Access::Session, &[Method::POST]),
+    ("/server/restart", Access::Session, &[Method::POST]),
+    (
+        "/server/reset",
+        Access::Session,
+        &[Method::GET, Method::POST],
+    ),
+    (
+        "/server/delete",
+        Access::Session,
+        &[Method::GET, Method::POST],
+    ),
+    ("/create", Access::Session, &[Method::GET]),
+    ("/server/create", Access::Session, &[Method::POST]),
+    ("/backups", Access::Session, &[Method::GET]),
+    ("/partials/backups", Access::Session, &[Method::GET]),
+    ("/backups/create", Access::Session, &[Method::POST]),
+    (
+        "/backups/{id}/restore",
+        Access::Session,
+        &[Method::GET, Method::POST],
+    ),
+    ("/players", Access::Session, &[Method::GET]),
+    ("/players/whitelist/add", Access::Session, &[Method::POST]),
+    (
+        "/players/whitelist/remove",
+        Access::Session,
+        &[Method::POST],
+    ),
+    ("/players/kick", Access::Session, &[Method::POST]),
+    ("/logs", Access::Session, &[Method::GET]),
+    ("/logs/tail", Access::Session, &[Method::GET]),
+    ("/mods", Access::Session, &[Method::GET]),
     ("/settings/devices", Access::Session, &[Method::GET]),
     ("/api/logout", Access::Session, &[Method::POST]),
     ("/api/sessions", Access::Session, &[Method::GET]),
@@ -1669,3 +1726,5 @@ async fn healthz_is_public_and_tiny() -> TestResult {
     assert_eq!((res.status, res.text().as_str()), (StatusCode::OK, "ok"));
     Ok(())
 }
+
+mod screens;

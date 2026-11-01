@@ -25,6 +25,7 @@ zstd = "0.14.3"
 axum = { version = "0.8.9", default-features = false, features = ["tokio", "http1", "form", "json", "matched-path"] }
 askama = { version = "0.16.1", default-features = false, features = ["derive", "std"] }
 serde_urlencoded = { version = "0.7.1", default-features = false }
+qrcodegen = "1.8.0"
 
 [lints]
 workspace = true

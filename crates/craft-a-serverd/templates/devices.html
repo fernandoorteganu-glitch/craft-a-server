@@ -1,6 +1,35 @@
 {% import "macros.html" as m %}
 <section class="card">
-<h1>{{ crate::panel::strings::DEVICES_TITLE }}</h1>
+<h1>{{ crate::panel::strings::SETTINGS_TITLE }}</h1>
+<h2>{{ crate::panel::strings::SETTINGS_ADDRESS }}</h2>
+<p class="note">{{ crate::panel::strings::SETTINGS_ADDRESS_HELP }}</p>
+<dl class="facts">
+<dt>{{ crate::panel::strings::SETTINGS_ADDRESS_NAME }}</dt>
+<dd><code>{{ panel_url }}</code></dd>
+{% if let Some(url) = ip_url %}
+<dt>{{ crate::panel::strings::SETTINGS_ADDRESS_IP }}</dt>
+<dd><code>{{ url }}</code></dd>
+{% endif %}
+</dl>
+{% if let Some(svg) = qr_svg %}
+<div class="qr-box">{{ svg|safe }}</div>
+{% else %}
+<p class="note">{{ crate::panel::strings::SETTINGS_NO_IP }}</p>
+{% endif %}
+{% if let Some(local) = mc_local %}
+<h2>{{ crate::panel::strings::SETTINGS_SERVER_ADDRESS }}</h2>
+<dl class="facts">
+<dt>{{ crate::panel::strings::CARD_ADDRESS_LOCAL }}</dt>
+<dd><code>{{ local }}</code></dd>
+{% if let Some(ip) = mc_ip %}
+<dt>{{ crate::panel::strings::CARD_ADDRESS_IP }}</dt>
+<dd><code>{{ ip }}</code></dd>
+{% endif %}
+</dl>
+{% endif %}
+</section>
+<section class="card">
+<h2>{{ crate::panel::strings::SETTINGS_DEVICES }}</h2>
 {% if devices.is_empty() %}
 <p>{{ crate::panel::strings::DEVICES_EMPTY }}</p>
 {% else %}
@@ -19,4 +48,8 @@
 {% endfor %}
 </ul>
 {% endif %}
+<form method="post" action="/api/logout">
+{{ m::csrf_field(csrf_token) }}
+<button type="submit" class="btn btn-secondary">{{ crate::panel::strings::LOGOUT }}</button>
+</form>
 </section>

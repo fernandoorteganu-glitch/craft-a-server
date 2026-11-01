@@ -1,0 +1,7 @@
+<section class="card">
+<h1>{{ crate::panel::strings::LOGS_TITLE }}</h1>
+<p class="note">{{ crate::panel::strings::LOGS_NOTE }}</p>
+<div id="log-pane" hx-get="/logs/tail" hx-trigger="load, every 2s" hx-swap="innerHTML">
+<p class="note">{{ crate::panel::strings::LOGS_EMPTY }}</p>
+</div>
+</section>

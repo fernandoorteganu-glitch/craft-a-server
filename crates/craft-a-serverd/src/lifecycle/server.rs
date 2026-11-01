@@ -2,6 +2,7 @@
 
 use std::time::{Duration, Instant};
 
+use craft_a_server_core::mc_protocol::ServerStatus;
 use craft_a_server_core::memory;
 use craft_a_server_core::model::{ServerEvent, ServerState};
 use rand::RngExt;
@@ -279,6 +280,31 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
         std::fs::remove_dir_all(self.server_backups_dir(id))
             .or_else(ignore_not_found("removing backups"))?;
         Ok(())
+    }
+
+    /// The memory the game would get on this machine (for the create screen).
+    pub fn memory_plan(&self) -> std::result::Result<memory::MemoryPlan, memory::MemoryError> {
+        memory::plan(
+            self.env.total_ram_bytes,
+            self.cfg.memory_reserve_mib,
+            self.cfg.memory_max_mib,
+        )
+    }
+
+    /// One status ping of a server's game port; `None` when it does not answer.
+    pub async fn live_status(&self, id: &str) -> Result<Option<ServerStatus>> {
+        let row = self.get_row(id)?;
+        Ok(self.probe.status(row.host_port).await)
+    }
+
+    /// The last `lines` lines of a server's log (empty when nothing runs).
+    pub async fn logs_tail(&self, id: &str, lines: usize) -> Result<Vec<String>> {
+        self.get_row(id)?;
+        match self.rt.logs_tail(id, lines).await {
+            Ok(l) => Ok(l),
+            Err(crate::runtime::RuntimeError::NotFound(_)) => Ok(Vec::new()),
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Runs one whitelisted console command: `whitelist add|remove <name>` or `kick <name>`.

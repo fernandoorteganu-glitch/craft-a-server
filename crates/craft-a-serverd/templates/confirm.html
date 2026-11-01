@@ -1,0 +1,14 @@
+{% import "macros.html" as m %}
+<section class="card">
+<h1>{{ title }}</h1>
+<p class="alert" role="alert">{{ warning }}</p>
+<p><strong>{{ detail }}</strong></p>
+<div class="actions">
+<form method="post" action="{{ action }}">
+{{ m::csrf_field(csrf_token) }}
+<input type="hidden" name="confirm" value="yes">
+<button type="submit" class="btn btn-danger">{{ confirm_label }}</button>
+</form>
+<a class="btn btn-secondary" href="{{ cancel_href }}">{{ crate::panel::strings::CANCEL }}</a>
+</div>
+</section>

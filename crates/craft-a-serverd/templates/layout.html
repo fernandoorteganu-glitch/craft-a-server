@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="referrer" content="no-referrer">
+<meta name="referrer" content="same-origin">
 {# htmx must not inject its own <style> or evaluate strings: the CSP forbids both. #}
 <meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false,"selfRequestsOnly":true}'>
 <title>{{ title }} - {{ crate::panel::strings::APP_NAME }}</title>
@@ -16,9 +16,13 @@
 <header class="bar">
 <a class="brand" href="/">{{ crate::panel::strings::APP_NAME }}</a>
 {% if signed_in %}
-<nav class="nav">
-<a href="/">{{ crate::panel::strings::NAV_HOME }}</a>
-<a href="/settings/devices">{{ crate::panel::strings::NAV_DEVICES }}</a>
+<nav class="nav" aria-label="Main">
+<a href="/"{% if active == "home" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_HOME }}</a>
+<a href="/backups"{% if active == "backups" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_BACKUPS }}</a>
+<a href="/players"{% if active == "players" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_PLAYERS }}</a>
+<a href="/logs"{% if active == "logs" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_LOGS }}</a>
+<a href="/mods"{% if active == "mods" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_MODS }}</a>
+<a href="/settings/devices"{% if active == "settings" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_SETTINGS }}</a>
 </nav>
 {% endif %}
 </header>

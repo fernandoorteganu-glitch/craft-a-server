@@ -20,6 +20,8 @@ struct Layout<'a> {
     /// `Some` only for signed-in pages; becomes the htmx `X-CSRF-Token` header.
     csrf_token: Option<&'a str>,
     signed_in: bool,
+    /// Which navigation entry to mark as the current page.
+    active: &'a str,
     content: &'a str,
 }
 
@@ -32,11 +34,32 @@ pub fn page<T: Template>(
     session: Option<&AuthSession>,
     body: &T,
 ) -> Result<Html<String>, PanelError> {
+    render(title, "", session, body)
+}
+
+/// A signed-in screen with its navigation entry highlighted
+/// (`home`, `backups`, `players`, `logs`, `mods` or `settings`).
+pub fn screen<T: Template>(
+    title: &str,
+    active: &str,
+    session: &AuthSession,
+    body: &T,
+) -> Result<Html<String>, PanelError> {
+    render(title, active, Some(session), body)
+}
+
+fn render<T: Template>(
+    title: &str,
+    active: &str,
+    session: Option<&AuthSession>,
+    body: &T,
+) -> Result<Html<String>, PanelError> {
     let content = body.render().map_err(|e| PanelError::internal(&e))?;
     let layout = Layout {
         title,
         csrf_token: session.map(|s| s.csrf_token.as_str()),
         signed_in: session.is_some(),
+        active,
         content: &content,
     };
     layout
@@ -50,31 +73,6 @@ pub fn page<T: Template>(
 #[template(path = "pair.html")]
 pub struct PairBody<'a> {
     pub error: Option<&'a str>,
-}
-
-/// Body of the post-login home page.
-#[derive(Template, Debug)]
-#[template(path = "home.html")]
-pub struct HomeBody<'a> {
-    pub device_name: &'a str,
-    pub csrf_token: &'a str,
-}
-
-/// One row of the devices page.
-#[derive(Debug)]
-pub struct DeviceRow {
-    pub id: String,
-    pub device_name: String,
-    pub last_seen: String,
-    pub current: bool,
-}
-
-/// Body of `/settings/devices`.
-#[derive(Template, Debug)]
-#[template(path = "devices.html")]
-pub struct DevicesBody<'a> {
-    pub devices: Vec<DeviceRow>,
-    pub csrf_token: &'a str,
 }
 
 #[derive(Template)]

@@ -1,0 +1,8 @@
+<div class="banner" aria-live="polite">
+{% if let Some(what) = banner.busy %}
+<p class="notice notice-busy" role="status">{{ what }}</p>
+{% endif %}
+{% if let Some(n) = banner.notice %}
+<p class="notice {% if n.ok %}notice-ok{% else %}notice-err{% endif %}" role="status">{{ n.text }}</p>
+{% endif %}
+</div>

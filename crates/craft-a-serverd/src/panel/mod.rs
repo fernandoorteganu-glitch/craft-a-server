@@ -26,6 +26,9 @@
 //!   authenticated the request and, for POST/PUT/PATCH/DELETE, verified Origin
 //!   and the CSRF token, so handlers do nothing extra. A route that is not in
 //!   the route table is treated as "session required" (fail closed).
+//! * Long actions (start, stop, backup, restore...) never run inside the
+//!   request: use [`activity::spawn_action`], which runs the lifecycle call in
+//!   a task and lets screens show progress through [`activity::Activity`].
 //! * Add a screen: create a module in `routes/`, write handlers returning
 //!   `Result<impl IntoResponse, PanelError>`, add a template in `templates/`
 //!   (render it with [`pages::page`]) and register it in [`routes::table`] with
@@ -40,14 +43,17 @@
 //! * Strings shown to people go in `strings.rs`.
 //! * Never log cookies, tokens, pairing codes or the CSRF token.
 
+pub mod activity;
 pub mod auth;
 pub mod error;
+mod mapping;
 mod middleware;
 pub mod net;
 pub mod pages;
 pub mod ratelimit;
 pub mod routes;
 pub mod strings;
+mod views;
 
 #[cfg(test)]
 mod tests;
@@ -148,6 +154,9 @@ impl PanelCore {
 pub struct PanelState<R, P> {
     core: Arc<PanelCore>,
     service: Arc<Service<R, P>>,
+    activity: Arc<activity::Activity>,
+    /// This machine's LAN address, for the Android `.local` fallback.
+    lan_ip: Option<std::net::Ipv4Addr>,
 }
 
 impl<R, P> Clone for PanelState<R, P> {
@@ -155,6 +164,8 @@ impl<R, P> Clone for PanelState<R, P> {
         PanelState {
             core: Arc::clone(&self.core),
             service: Arc::clone(&self.service),
+            activity: Arc::clone(&self.activity),
+            lan_ip: self.lan_ip,
         }
     }
 }
@@ -175,7 +186,27 @@ impl<R: ContainerRuntime, P: StatusProbe> PanelState<R, P> {
             Arc::clone(&service.cfg),
             Arc::clone(&service.env.now_unix),
         );
-        PanelState { core, service }
+        PanelState {
+            core,
+            service,
+            activity: activity::Activity::new(),
+            lan_ip: lan_ipv4(),
+        }
+    }
+
+    /// Overrides the detected LAN address (tests; machines with several NICs).
+    #[must_use]
+    pub fn with_lan_ip(mut self, lan_ip: Option<std::net::Ipv4Addr>) -> Self {
+        self.lan_ip = lan_ip;
+        self
+    }
+
+    pub fn activity(&self) -> &Arc<activity::Activity> {
+        &self.activity
+    }
+
+    pub fn lan_ip(&self) -> Option<std::net::Ipv4Addr> {
+        self.lan_ip
     }
 
     pub fn service(&self) -> &Arc<Service<R, P>> {

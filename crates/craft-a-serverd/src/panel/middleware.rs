@@ -80,7 +80,10 @@ pub(super) async fn security_headers(req: Request, next: Next) -> Response {
     };
     set(h, "content-security-policy", CSP);
     set(h, "x-content-type-options", "nosniff");
-    set(h, "referrer-policy", "no-referrer");
+    // `same-origin`, not `no-referrer`: with no-referrer browsers send `Origin: null` on
+    // form posts, which the Origin check (rightly) rejects, so nothing could be submitted.
+    // Nothing is ever sent cross-origin either way.
+    set(h, "referrer-policy", "same-origin");
     set(h, "x-frame-options", "DENY");
     set(h, "cross-origin-opener-policy", "same-origin");
     set(h, "cross-origin-resource-policy", "same-origin");

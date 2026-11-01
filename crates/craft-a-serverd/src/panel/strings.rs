@@ -17,14 +17,12 @@ pub const PAIR_LAN_NOTE: &str = "This panel is only reachable on your home netwo
 // Home / devices
 pub const HOME_TITLE: &str = "Home";
 pub const HOME_PAIRED_AS: &str = "Paired as";
-pub const HOME_PLACEHOLDER: &str = "Your servers will appear here soon.";
 pub const LOGOUT: &str = "Sign out";
 pub const DEVICES_TITLE: &str = "Paired phones";
 pub const DEVICES_THIS: &str = "this phone";
 pub const DEVICES_REVOKE: &str = "Sign out";
 pub const DEVICES_EMPTY: &str = "No phones are paired.";
 pub const NAV_HOME: &str = "Home";
-pub const NAV_DEVICES: &str = "Phones";
 
 // Errors (page and JSON)
 pub const ERR_PAGE_TITLE: &str = "Something went wrong";
@@ -51,3 +49,139 @@ pub const DEVICE_ANDROID_TABLET: &str = "Android tablet";
 pub const DEVICE_IPHONE: &str = "iPhone";
 pub const DEVICE_IPAD: &str = "iPad";
 pub const DEVICE_BROWSER: &str = "Browser";
+
+// Navigation
+pub const NAV_BACKUPS: &str = "Backups";
+pub const NAV_PLAYERS: &str = "Players";
+pub const NAV_LOGS: &str = "Logs";
+pub const NAV_MODS: &str = "Mods";
+pub const NAV_SETTINGS: &str = "Settings";
+
+// Server card
+pub const CARD_NO_SERVER: &str = "You have no server yet.";
+pub const CARD_CREATE_LINK: &str = "Create your server";
+pub const CARD_VERSION: &str = "Minecraft";
+pub const CARD_PLAYERS: &str = "Players online";
+pub const CARD_ADDRESS_LOCAL: &str = "Join at home";
+pub const CARD_ADDRESS_IP: &str = "If that name does not work";
+pub const CARD_START: &str = "Start";
+pub const CARD_STOP: &str = "Stop";
+pub const CARD_RESTART: &str = "Restart";
+pub const CARD_RESET: &str = "Reset";
+pub const CARD_DELETE: &str = "Delete server";
+pub const CARD_WHY_FAILED: &str = "What went wrong";
+pub const STATE_CREATING: &str = "Creating";
+pub const STATE_STOPPED: &str = "Stopped";
+pub const STATE_STARTING: &str = "Starting";
+pub const STATE_RUNNING: &str = "Running";
+pub const STATE_STOPPING: &str = "Stopping";
+pub const STATE_FAILED: &str = "Failed";
+
+// Busy and result banners
+pub const BUSY_START: &str = "Starting the server. This can take a few minutes.";
+pub const BUSY_STOP: &str = "Stopping the server.";
+pub const BUSY_RESTART: &str = "Restarting the server. This can take a few minutes.";
+pub const BUSY_RESET: &str = "Resetting the server.";
+pub const BUSY_DELETE: &str = "Deleting the server.";
+pub const BUSY_BACKUP: &str = "Creating a backup.";
+pub const BUSY_RESTORE: &str = "Restoring the backup. The server may restart.";
+pub const DONE_START: &str = "The server is running.";
+pub const DONE_STOP: &str = "The server is stopped.";
+pub const DONE_RESTART: &str = "The server restarted.";
+pub const DONE_RESET: &str = "The server was reset. You can start it again.";
+pub const DONE_DELETE: &str = "The server was deleted.";
+pub const DONE_CREATE: &str = "Server created. Press Start when you are ready.";
+pub const BUSY_CREATE: &str = "Creating the server.";
+pub const DONE_BACKUP: &str = "Backup created.";
+pub const DONE_RESTORE: &str = "Backup restored.";
+pub const ERR_BUSY_ACTION: &str = "Another action is still running. Wait for it to finish";
+pub const ERR_NO_SERVER: &str = "There is no server yet. Create one first";
+pub const ERR_SERVER_EXISTS: &str = "A server already exists. Delete it before creating another";
+pub const ERR_ACTION_FAILED: &str = "That did not work. Details are in the daemon log";
+pub const ERR_START_FAILED: &str = "The server did not start. See the Logs page for details";
+pub const ERR_DISK_LOW: &str = "There is not enough free disk space for that";
+pub const ERR_MEMORY: &str = "This machine does not have enough memory to run a server";
+pub const ERR_EULA: &str = "You must accept the Minecraft EULA to create a server";
+pub const ERR_CONFIRM: &str = "That action needs to be confirmed first";
+pub const ERR_NOT_RUNNING: &str = "The server must be running for that";
+pub const ERR_SERVER_STATE: &str = "The server is busy or in the wrong state for that";
+
+// Create server
+pub const CREATE_TITLE: &str = "Create your server";
+pub const CREATE_NAME_LABEL: &str = "Server name";
+pub const CREATE_NAME_DEFAULT: &str = "My server";
+pub const CREATE_VERSION_LABEL: &str = "Minecraft version";
+pub const CREATE_VERSION_DEFAULT: &str = "26.3";
+pub const CREATE_VERSION_HELP: &str =
+    "Java Edition, for example 26.3. Players need the same version.";
+pub const CREATE_MEMORY: &str = "Memory for the game";
+pub const CREATE_MEMORY_LOW: &str =
+    "This machine has little memory. Expect the server to struggle with several players.";
+pub const CREATE_MEMORY_NONE: &str = "This machine does not have enough memory to run a server.";
+pub const CREATE_EULA_LABEL: &str = "I accept the Minecraft EULA";
+pub const CREATE_EULA_LINK: &str = "Read the EULA";
+pub const CREATE_EULA_URL: &str = "https://www.minecraft.net/en-us/eula";
+pub const CREATE_SUBMIT: &str = "Create server";
+pub const CREATE_WHITELIST_NOTE: &str = "Only players you add on the Players page can join.";
+
+// Backups
+pub const BACKUPS_TITLE: &str = "Backups";
+pub const BACKUPS_CREATE: &str = "Back up now";
+pub const BACKUPS_EMPTY: &str = "No backups yet.";
+pub const BACKUPS_RESTORE: &str = "Restore";
+pub const BACKUPS_NOTE: &str =
+    "A backup is also made every day. Old ones are removed automatically.";
+pub const BACKUP_DAILY: &str = "Daily";
+pub const BACKUP_MANUAL: &str = "Manual";
+pub const BACKUP_PRE_CHANGE: &str = "Before a change";
+pub const BACKUP_PRE_RESTORE: &str = "Before a restore";
+pub const RESTORE_TITLE: &str = "Restore this backup?";
+pub const RESTORE_WARNING: &str = "The current world is replaced by this backup. A safety backup of the current world is taken first, and the server restarts if it was running.";
+pub const RESTORE_CONFIRM: &str = "Yes, restore";
+pub const CANCEL: &str = "Cancel";
+
+// Reset / delete confirmation
+pub const RESET_TITLE: &str = "Reset the server?";
+pub const RESET_WARNING: &str =
+    "This clears the failed state so the server can be started again. Your world is not touched.";
+pub const RESET_CONFIRM: &str = "Yes, reset";
+pub const DELETE_TITLE: &str = "Delete the server?";
+pub const DELETE_WARNING: &str = "This permanently deletes the world, the settings and all backups of this server. This cannot be undone.";
+pub const DELETE_CONFIRM: &str = "Yes, delete everything";
+
+// Players
+pub const PLAYERS_TITLE: &str = "Players";
+pub const PLAYERS_WHITELIST: &str = "Allowed players";
+pub const PLAYERS_EMPTY: &str = "Nobody is on the list yet.";
+pub const PLAYERS_NAME_LABEL: &str = "Player name";
+pub const PLAYERS_NAME_HELP: &str =
+    "3 to 16 letters, digits or underscores, exactly as in Minecraft.";
+pub const PLAYERS_ADD: &str = "Add";
+pub const PLAYERS_REMOVE: &str = "Remove";
+pub const PLAYERS_KICK: &str = "Kick";
+pub const PLAYERS_NEED_RUNNING: &str = "Start the server to manage players.";
+pub const PLAYERS_ADDED: &str = "Added to the list";
+pub const PLAYERS_REMOVED: &str = "Removed from the list";
+pub const PLAYERS_KICKED: &str = "Kick sent";
+pub const ERR_PLAYER_NAME: &str = "Player names are 3 to 16 letters, digits or underscores";
+
+// Logs
+pub const LOGS_TITLE: &str = "Logs";
+pub const LOGS_EMPTY: &str = "No log lines yet.";
+pub const LOGS_NOTE: &str = "Newest lines at the bottom. Updates every 2 seconds.";
+
+// Mods
+pub const MODS_TITLE: &str = "Mods";
+pub const MODS_SOON: &str = "Coming soon";
+pub const MODS_TEXT: &str = "Installing mods from Modrinth, with an automatic backup and rollback if a mod breaks the server, is planned for a later version.";
+
+// Settings
+pub const SETTINGS_TITLE: &str = "Settings";
+pub const SETTINGS_ADDRESS: &str = "Panel address";
+pub const SETTINGS_ADDRESS_HELP: &str = "Some Android phones cannot open .local names. Use the number address below, or scan the code with another phone.";
+pub const SETTINGS_ADDRESS_NAME: &str = "By name";
+pub const SETTINGS_ADDRESS_IP: &str = "By number";
+pub const SETTINGS_NO_IP: &str = "The number address could not be determined on this machine.";
+pub const SETTINGS_QR_LABEL: &str = "QR code of the panel address";
+pub const SETTINGS_SERVER_ADDRESS: &str = "Minecraft address";
+pub const SETTINGS_DEVICES: &str = "Paired phones";

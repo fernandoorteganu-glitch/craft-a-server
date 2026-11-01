@@ -33,7 +33,7 @@ use crate::runtime::{ContainerRuntime, RuntimeError};
 
 pub use backups::Reason;
 pub use recovery::ReconcileReport;
-pub use server::Console;
+pub use server::{Console, player_name};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ServiceError {

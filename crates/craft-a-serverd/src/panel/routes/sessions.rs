@@ -8,42 +8,10 @@ use axum::http::header::{self, HeaderMap, HeaderValue};
 use axum::response::{IntoResponse, Redirect, Response};
 use serde::Serialize;
 
+use crate::panel::PanelCore;
 use crate::panel::auth::{AuthSession, clear_cookie};
 use crate::panel::error::PanelError;
 use crate::panel::middleware::is_htmx;
-use crate::panel::pages::{self, DeviceRow, DevicesBody, HomeBody, format_utc};
-use crate::panel::{PanelCore, strings};
-
-/// Placeholder home page: proves the session works.
-pub async fn home(session: AuthSession) -> Result<Response, PanelError> {
-    let body = HomeBody {
-        device_name: &session.device_name,
-        csrf_token: &session.csrf_token,
-    };
-    Ok(pages::page(strings::HOME_TITLE, Some(&session), &body)?.into_response())
-}
-
-pub async fn devices_page(
-    State(core): State<Arc<PanelCore>>,
-    session: AuthSession,
-) -> Result<Response, PanelError> {
-    let now = core.now();
-    let rows = core.blocking(move |db| Ok(db.list_sessions(now)?)).await?;
-    let devices = rows
-        .into_iter()
-        .map(|r| DeviceRow {
-            current: r.id == session.id,
-            id: r.id,
-            device_name: r.device_name,
-            last_seen: format_utc(r.last_seen_unix),
-        })
-        .collect();
-    let body = DevicesBody {
-        devices,
-        csrf_token: &session.csrf_token,
-    };
-    Ok(pages::page(strings::DEVICES_TITLE, Some(&session), &body)?.into_response())
-}
 
 #[derive(Debug, Serialize)]
 struct SessionView {
