@@ -5,7 +5,7 @@
 #
 # Allows: the internet and DNS via the pasta forwarder (169.254.1.1), replies to inbound
 # connections. Drops: everything addressed to loopback-other, RFC1918, CGNAT, link-local
-# (incl. cloud metadata), multicast/reserved, and the IPv6 equivalents.
+# (incl. cloud metadata) and multicast/reserved; all IPv6 is dropped.
 table inet craft_egress {
   chain out {
     type filter hook output priority 0; policy accept;
@@ -14,6 +14,9 @@ table inet craft_egress {
     ip daddr 169.254.1.1 udp dport 53 accept
     ip daddr 169.254.1.1 tcp dport 53 accept
     ip daddr { 0.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24, 192.168.0.0/16, 198.18.0.0/15, 224.0.0.0/3 } counter drop
-    ip6 daddr { ::/128, ::1/128, fc00::/7, fe80::/10, ff00::/8 } counter drop
+    # IPv6 is dropped entirely: LAN devices usually also hold global IPv6
+    # addresses in the host's subnet, which no prefix list can tell apart from
+    # the internet. Minecraft servers and their downloads work over IPv4.
+    meta nfproto ipv6 counter drop
   }
 }

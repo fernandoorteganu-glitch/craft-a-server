@@ -1,0 +1,22 @@
+{% import "macros.html" as m %}
+<section class="card">
+<h1>{{ crate::panel::strings::DEVICES_TITLE }}</h1>
+{% if devices.is_empty() %}
+<p>{{ crate::panel::strings::DEVICES_EMPTY }}</p>
+{% else %}
+<ul class="list">
+{% for d in devices %}
+<li class="row">
+<div class="grow">
+<strong>{{ d.device_name }}</strong>{% if d.current %} <span class="tag">{{ crate::panel::strings::DEVICES_THIS }}</span>{% endif %}
+<div class="note">{{ d.last_seen }}</div>
+</div>
+<form method="post" action="/api/sessions/{{ d.id }}/revoke">
+{{ m::csrf_field(csrf_token) }}
+<button type="submit" class="btn btn-secondary">{{ crate::panel::strings::DEVICES_REVOKE }}</button>
+</form>
+</li>
+{% endfor %}
+</ul>
+{% endif %}
+</section>

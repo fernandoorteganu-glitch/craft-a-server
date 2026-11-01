@@ -3,6 +3,7 @@
 pub mod config;
 pub mod ctl;
 pub mod error;
+pub mod image;
 pub mod mc_protocol;
 pub mod memory;
 pub mod model;

@@ -1,0 +1,3 @@
+{# Hidden CSRF field for plain HTML forms. Usage in a page template:
+   {% import "macros.html" as m %}  ...  {{ m::csrf_field(csrf_token) }} #}
+{% macro csrf_field(token) %}<input type="hidden" name="csrf_token" value="{{ token }}">{% endmacro %}

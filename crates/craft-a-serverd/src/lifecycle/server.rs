@@ -116,7 +116,11 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
         }
     }
 
-    fn build_spec(&self, row: &ServerRow, plan: &memory::MemoryPlan) -> ServerContainerSpec {
+    pub(crate) fn build_spec(
+        &self,
+        row: &ServerRow,
+        plan: &memory::MemoryPlan,
+    ) -> ServerContainerSpec {
         let cpus = if self.cfg.cpus == 0 {
             std::thread::available_parallelism().map_or(1, |n| n.get() as u32)
         } else {
@@ -125,7 +129,7 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
         ServerContainerSpec {
             id: row.id.clone(),
             mc_version: row.mc_version.clone(),
-            image: self.cfg.image.clone(),
+            image: craft_a_server_core::image::resolve_image(&self.cfg.image, &row.mc_version),
             data_dir: self.data_dir(&row.id),
             host_port: row.host_port,
             memory_limit_mib: u32::try_from(plan.container_limit_mib).unwrap_or(u32::MAX),

@@ -1,6 +1,6 @@
 //! Human-readable output. Pure functions: they return strings, never print.
 
-use craft_a_server_core::ctl::{BackupInfo, DiagnoseInfo, EventInfo, ServerInfo};
+use craft_a_server_core::ctl::{BackupInfo, DeviceInfo, DiagnoseInfo, EventInfo, ServerInfo};
 
 /// Replaces control characters (terminal escape sequences, bells...) so text
 /// that came from a container log or a player name cannot drive the terminal.
@@ -52,6 +52,58 @@ pub fn table(headers: &[&str], rows: &[Vec<String>]) -> String {
         out.push_str(&line(row.iter().map(String::as_str).collect()));
     }
     out
+}
+
+/// Pairing code as `XXXX-XXXX`, how long it lasts and where to enter it.
+pub fn render_pairing(
+    code: &str,
+    expires_unix: i64,
+    now_unix: i64,
+    url: &str,
+    alt_urls: &[String],
+) -> String {
+    let code = sanitize(code);
+    let shown = match (code.get(..4), code.get(4..)) {
+        (Some(a), Some(b)) if !b.is_empty() => format!("{a}-{b}"),
+        _ => code,
+    };
+    let minutes = ((expires_unix - now_unix).max(0) + 59) / 60;
+    let mut out = format!(
+        "Pairing code: {shown}
+Valid for {minutes} minute{} and works once.
+
+         On your phone (same Wi-Fi), open:
+  {}",
+        if minutes == 1 { "" } else { "s" },
+        sanitize(url)
+    );
+    for alt in alt_urls {
+        out.push_str(&format!(
+            "
+  {}",
+            sanitize(alt)
+        ));
+    }
+    out
+}
+
+/// Paired devices as a table.
+pub fn render_devices(list: &[DeviceInfo]) -> String {
+    if list.is_empty() {
+        return "No paired devices. Run `craft-a-server pair` to add one.".to_owned();
+    }
+    let rows: Vec<Vec<String>> = list
+        .iter()
+        .map(|d| {
+            vec![
+                sanitize(&d.id),
+                sanitize(&d.device_name),
+                format_unix(d.last_seen_unix),
+                format_unix(d.expires_unix),
+            ]
+        })
+        .collect();
+    table(&["ID", "DEVICE", "LAST SEEN", "SIGNED IN UNTIL"], &rows)
 }
 
 /// `2026-11-01 12:00:00 UTC`.
@@ -228,6 +280,35 @@ mod tests {
             port: 25565,
             created_unix: 1_700_000_000,
         }
+    }
+
+    #[test]
+    fn pairing_is_shown_with_a_dash_and_minutes() {
+        let text = render_pairing(
+            "ABCD2345",
+            1_000 + 600,
+            1_000,
+            "http://h/pair",
+            &["http://1.2.3.4/pair".into()],
+        );
+        assert!(text.contains("ABCD-2345"), "{text}");
+        assert!(text.contains("10 minutes"), "{text}");
+        assert!(text.contains("http://h/pair") && text.contains("http://1.2.3.4/pair"));
+        assert!(render_pairing("AB", 0, 100, "u", &[]).contains("0 minutes"));
+    }
+
+    #[test]
+    fn devices_table() {
+        assert!(render_devices(&[]).contains("No paired devices"));
+        let d = DeviceInfo {
+            id: "d1".into(),
+            device_name: "Pixel[31m".into(),
+            created_unix: 0,
+            last_seen_unix: 0,
+            expires_unix: 0,
+        };
+        let text = render_devices(&[d]);
+        assert!(text.contains("d1") && text.contains("Pixel?[31m"), "{text}");
     }
 
     #[test]

@@ -15,9 +15,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use craft_a_server_core::ctl::{
-    BackupInfo, Command, ConsoleAction, DiagnoseInfo, ErrorKind, EventInfo, MAX_REQUEST_BYTES,
-    PROTOCOL_VERSION, ProtocolError, Reply, Request, Response, ServerInfo, encode_line,
-    parse_request,
+    BackupInfo, Command, ConsoleAction, DeviceInfo, DiagnoseInfo, ErrorKind, EventInfo,
+    MAX_REQUEST_BYTES, PROTOCOL_VERSION, ProtocolError, Reply, Request, Response, ServerInfo,
+    encode_line, parse_request,
 };
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::unix::OwnedWriteHalf;
@@ -466,6 +466,54 @@ where
             error(ErrorKind::InvalidInput, "logs_follow cannot be used here")
         }
         Command::Diagnose {} => Response::Diagnose(diagnose(svc).await?),
+        Command::Pair {} => {
+            let issued = crate::panel::auth::issue_pairing_code(
+                svc.db(),
+                svc.now(),
+                svc.cfg.pairing_code_ttl_secs,
+            )
+            .map_err(|e| ServiceError::Io {
+                context: "creating a pairing code",
+                source: io::Error::other(e.to_string()),
+            })?;
+            let (url, alt_urls) = crate::panel::pairing_urls(&svc.cfg, crate::panel::lan_ipv4());
+            svc.event(
+                None,
+                "pairing_code",
+                "a pairing code was created from the CLI",
+            );
+            Response::PairingCode {
+                code: issued.code,
+                expires_unix: issued.expires_unix,
+                url,
+                alt_urls,
+            }
+        }
+        Command::DevicesList {} => Response::Devices(
+            svc.db()
+                .list_sessions(svc.now())?
+                .into_iter()
+                .map(|s| DeviceInfo {
+                    id: s.id,
+                    device_name: s.device_name,
+                    created_unix: s.created_unix,
+                    last_seen_unix: s.last_seen_unix,
+                    expires_unix: s.expires_unix,
+                })
+                .collect(),
+        ),
+        Command::DevicesRevoke { id } => {
+            if svc.db().delete_session(&id)? {
+                svc.event(
+                    None,
+                    "device_revoked",
+                    &format!("device {id} was signed out"),
+                );
+                Response::Ok
+            } else {
+                return Err(ServiceError::NotFound(format!("device {id}")));
+            }
+        }
     })
 }
 
@@ -1074,6 +1122,60 @@ mod tests {
         assert_eq!(d.servers.len(), 1);
         assert!(!d.events.is_empty());
         assert!(!serde_json::to_string(&reply)?.contains(&password));
+        fx.shutdown().await
+    }
+
+    #[tokio::test]
+    async fn pairing_and_devices_over_the_socket() -> TestResult {
+        let mut fx = Fixture::new()?;
+        fx.serve().await?;
+        let mut c = fx.client().await?;
+        let Response::PairingCode {
+            code,
+            expires_unix,
+            url,
+            ..
+        } = c.call(1, Command::Pair {}).await?
+        else {
+            return Err("expected a pairing code".into());
+        };
+        assert_eq!(code.len(), 8);
+        assert!(expires_unix > 0);
+        assert!(
+            url.ends_with("/pair") && url.starts_with("http://"),
+            "{url}"
+        );
+        // Only the hash is stored, and the code redeems exactly once.
+        let now = fx.svc.now();
+        assert_eq!(fx.svc.db().count_pairing_codes(now)?, 1);
+        let db = fx.svc.db();
+        let out = crate::panel::auth::redeem_code(db, &code, "Pixel", now, 3600)?
+            .ok_or("code should redeem")?;
+        assert!(crate::panel::auth::redeem_code(db, &code, "Pixel", now + 1, 3600)?.is_none());
+
+        let Response::Devices(list) = c.call(2, Command::DevicesList {}).await? else {
+            return Err("expected devices".into());
+        };
+        assert_eq!(list.len(), 1);
+        let device = list.first().ok_or("one device")?;
+        assert_eq!(device.device_name, "Pixel");
+        assert_eq!(device.id, out.session.id);
+        let wire = serde_json::to_string(&list)?;
+        assert!(!wire.contains(&out.token) && !wire.contains(&out.session.csrf_token));
+
+        let id = device.id.clone();
+        assert!(matches!(
+            c.call(3, Command::DevicesRevoke { id: id.clone() }).await?,
+            Response::Ok
+        ));
+        assert_eq!(
+            kind_of(&c.call(4, Command::DevicesRevoke { id }).await?),
+            Some(ErrorKind::NotFound)
+        );
+        let Response::Devices(list) = c.call(5, Command::DevicesList {}).await? else {
+            return Err("expected devices".into());
+        };
+        assert!(list.is_empty());
         fx.shutdown().await
     }
 

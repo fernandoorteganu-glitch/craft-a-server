@@ -88,6 +88,21 @@ pub enum Cmd {
     Kick { id: String, player: String },
     /// Print versions, server states and recent events.
     Diagnose,
+    /// Show a one-time code to pair a phone with the web panel.
+    Pair,
+    /// List and sign out the phones paired with the web panel.
+    Devices {
+        #[command(subcommand)]
+        action: DevicesCmd,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum DevicesCmd {
+    /// List paired phones.
+    List,
+    /// Sign a phone out (use the id from `devices list`).
+    Revoke { id: String },
 }
 
 #[derive(Debug, Subcommand)]
@@ -158,6 +173,11 @@ impl Cmd {
             },
             Cmd::Kick { id, player } => console(id, ConsoleAction::Kick, player),
             Cmd::Diagnose => Command::Diagnose {},
+            Cmd::Pair => Command::Pair {},
+            Cmd::Devices { action } => match action {
+                DevicesCmd::List => Command::DevicesList {},
+                DevicesCmd::Revoke { id } => Command::DevicesRevoke { id: id.clone() },
+            },
         }
     }
 
@@ -263,6 +283,12 @@ mod tests {
             (vec!["status"], Command::List {}),
             (vec!["status", "s1"], Command::Status { id: id() }),
             (vec!["diagnose"], Command::Diagnose {}),
+            (vec!["pair"], Command::Pair {}),
+            (vec!["devices", "list"], Command::DevicesList {}),
+            (
+                vec!["devices", "revoke", "d1"],
+                Command::DevicesRevoke { id: "d1".into() },
+            ),
             (
                 vec!["backup", "create", "s1"],
                 Command::BackupCreate { id: id() },

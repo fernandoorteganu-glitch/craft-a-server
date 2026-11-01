@@ -87,6 +87,14 @@ pub enum Command {
         id: String,
     },
     Diagnose {},
+    /// Create a one-time pairing code for the web panel.
+    Pair {},
+    /// List paired devices (phones signed in to the panel).
+    DevicesList {},
+    /// Sign a paired device out, by its public id.
+    DevicesRevoke {
+        id: String,
+    },
 }
 
 /// One request line.
@@ -181,6 +189,18 @@ pub struct DiagnoseInfo {
     pub events: Vec<EventInfo>,
 }
 
+/// A phone paired with the panel. Never carries the session token or CSRF token.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DeviceInfo {
+    /// Public id, used to revoke.
+    pub id: String,
+    pub device_name: String,
+    pub created_unix: i64,
+    pub last_seen_unix: i64,
+    pub expires_unix: i64,
+}
+
 /// What the daemon answers.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data", rename_all = "snake_case")]
@@ -198,6 +218,17 @@ pub enum Response {
     /// One log line of a `logs_follow` stream.
     Line(String),
     Ok,
+    /// A fresh pairing code. `code` is the raw 8 characters (no dash).
+    PairingCode {
+        code: String,
+        expires_unix: i64,
+        /// Pairing page by hostname.
+        url: String,
+        /// The same page by LAN address, for networks without mDNS.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        alt_urls: Vec<String>,
+    },
+    Devices(Vec<DeviceInfo>),
     Error {
         kind: ErrorKind,
         message: String,
@@ -298,6 +329,9 @@ mod tests {
             },
             Command::LogsFollow { id: id() },
             Command::Diagnose {},
+            Command::Pair {},
+            Command::DevicesList {},
+            Command::DevicesRevoke { id: id() },
         ]
     }
 
@@ -376,6 +410,19 @@ mod tests {
             Response::Text("hello".into()),
             Response::Line("[12:00] hi".into()),
             Response::Ok,
+            Response::PairingCode {
+                code: "ABCD2345".into(),
+                expires_unix: 99,
+                url: "http://craft-a-server.local:8080/pair".into(),
+                alt_urls: vec!["http://192.168.1.5:8080/pair".into()],
+            },
+            Response::Devices(vec![DeviceInfo {
+                id: "d1".into(),
+                device_name: "Pixel".into(),
+                created_unix: 1,
+                last_seen_unix: 2,
+                expires_unix: 3,
+            }]),
             Response::Error {
                 kind: ErrorKind::WrongState,
                 message: "nope".into(),
@@ -388,6 +435,24 @@ mod tests {
             };
             assert_eq!(parse_reply(&encode_line(&reply))?, reply);
         }
+        Ok(())
+    }
+
+    #[test]
+    fn pairing_commands_have_stable_wire_names() -> TestResult {
+        assert_eq!(
+            encode_line(&Request {
+                id: None,
+                cmd: Command::Pair {}
+            }),
+            "{\"cmd\":{\"type\":\"pair\"}}
+"
+        );
+        assert_eq!(
+            parse_request(r#"{"cmd":{"type":"devices_revoke","id":"d1"}}"#)?.cmd,
+            Command::DevicesRevoke { id: "d1".into() }
+        );
+        assert!(parse_request(r#"{"cmd":{"type":"pair","x":1}}"#).is_err());
         Ok(())
     }
 

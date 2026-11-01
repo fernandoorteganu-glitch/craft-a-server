@@ -30,6 +30,7 @@ mod app {
     use craft_a_serverd::ctl;
     use craft_a_serverd::db::Db;
     use craft_a_serverd::lifecycle::{Env, Service, TcpProbe};
+    use craft_a_serverd::panel::{self, PanelState};
     use craft_a_serverd::runtime::{ContainerRuntime, PodmanCli};
     use tokio::sync::watch;
 
@@ -191,6 +192,7 @@ mod app {
                 .await
             })
         };
+        let panel_task = start_panel(&service, &cfg, stop_rx.clone()).await;
         // Servers that were running before a reboot come back by themselves,
         // in the background so the control socket is available meanwhile.
         if !to_autostart.is_empty() {
@@ -240,12 +242,59 @@ mod app {
             Ok(Err(e)) => failure = Some(format!("control socket: {e}")),
             Err(e) => failure = Some(format!("control socket task failed: {e}")),
         }
+        if let Some(task) = panel_task {
+            match tokio::time::timeout(TASK_EXIT_GRACE, task).await {
+                Ok(Ok(Ok(()))) => {}
+                Ok(Ok(Err(e))) => tracing::error!(error = %e, "web panel stopped with an error"),
+                Ok(Err(e)) => tracing::error!(error = %e, "web panel task failed"),
+                Err(_) => tracing::warn!("the web panel did not stop in time"),
+            }
+        }
         for task in [supervisor, scheduler] {
             if tokio::time::timeout(TASK_EXIT_GRACE, task).await.is_err() {
                 tracing::warn!("a background loop did not stop in time");
             }
         }
         failure.map_or(Ok(()), Err)
+    }
+
+    /// Starts the web panel. A panel that cannot start (port taken, bad
+    /// address) is logged loudly but does not stop the daemon: servers and the
+    /// CLI keep working.
+    async fn start_panel(
+        service: &Arc<Svc>,
+        cfg: &Config,
+        mut stop: watch::Receiver<bool>,
+    ) -> Option<tokio::task::JoinHandle<std::io::Result<()>>> {
+        let listener = match panel::bind(cfg).await {
+            Ok(l) => l,
+            Err(e) => {
+                tracing::error!(
+                    error = %e, bind = %cfg.panel_bind, port = cfg.panel_port,
+                    "cannot start the web panel"
+                );
+                return None;
+            }
+        };
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX));
+        match panel::auth::first_run_code(service.db(), now, cfg.pairing_code_ttl_secs) {
+            Ok(Some(issued)) => tracing::info!(
+                code = %panel::auth::display_code(&issued.code),
+                expires_unix = issued.expires_unix,
+                "first-run pairing code"
+            ),
+            Ok(None) => {}
+            Err(e) => tracing::error!(error = %e, "could not create the first-run pairing code"),
+        }
+        let state = PanelState::new(Arc::clone(service));
+        Some(tokio::spawn(async move {
+            panel::serve(state, listener, async move {
+                let _ = stop.wait_for(|v| *v).await;
+            })
+            .await
+        }))
     }
 
     /// Runs `body` every `period` (first run immediately) until told to stop.

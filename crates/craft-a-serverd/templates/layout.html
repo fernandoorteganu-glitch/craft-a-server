@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="referrer" content="no-referrer">
+{# htmx must not inject its own <style> or evaluate strings: the CSP forbids both. #}
+<meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false,"selfRequestsOnly":true}'>
+<title>{{ title }} - {{ crate::panel::strings::APP_NAME }}</title>
+<link rel="stylesheet" href="/static/panel.css">
+<script src="/static/htmx.min.js" defer></script>
+</head>
+{# Every htmx request from a signed-in page carries the CSRF token via this header. #}
+<body{% if let Some(token) = csrf_token %} hx-headers='{"X-CSRF-Token": "{{ token }}"}'{% endif %}>
+<header class="bar">
+<a class="brand" href="/">{{ crate::panel::strings::APP_NAME }}</a>
+{% if signed_in %}
+<nav class="nav">
+<a href="/">{{ crate::panel::strings::NAV_HOME }}</a>
+<a href="/settings/devices">{{ crate::panel::strings::NAV_DEVICES }}</a>
+</nav>
+{% endif %}
+</header>
+<main class="main">
+{{ content|safe }}
+</main>
+<footer class="foot">{{ crate::panel::strings::DISCLAIMER }}</footer>
+</body>
+</html>

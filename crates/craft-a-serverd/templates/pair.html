@@ -1,0 +1,15 @@
+<section class="card">
+<h1>{{ crate::panel::strings::PAIR_TITLE }}</h1>
+<p>{{ crate::panel::strings::PAIR_INTRO }}</p>
+{% if let Some(message) = error %}
+<p class="alert" role="alert">{{ message }}</p>
+{% endif %}
+<form method="post" action="/api/pair" class="form" autocomplete="off">
+<label for="code">{{ crate::panel::strings::PAIR_CODE_LABEL }}</label>
+<input id="code" name="code" type="text" class="code" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" maxlength="12" placeholder="XXXX-XXXX" required autofocus>
+<label for="device_name">{{ crate::panel::strings::PAIR_DEVICE_LABEL }}</label>
+<input id="device_name" name="device_name" type="text" autocomplete="off" maxlength="40">
+<button type="submit" class="btn">{{ crate::panel::strings::PAIR_SUBMIT }}</button>
+</form>
+<p class="note">{{ crate::panel::strings::PAIR_LAN_NOTE }}</p>
+</section>

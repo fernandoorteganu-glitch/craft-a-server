@@ -8,6 +8,24 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 pub const DEFAULT_MC_PORT: u16 = 25565;
+pub const DEFAULT_PANEL_PORT: u16 = 8080;
+pub const DEFAULT_PANEL_HOSTNAME: &str = "craft-a-server.local";
+
+/// True for a plain DNS hostname: dot-separated labels of ASCII letters,
+/// digits and inner hyphens (no port, no scheme, no trailing dot).
+pub fn is_plain_hostname(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 253
+        && name.split('.').all(|label| {
+            !label.is_empty()
+                && label.len() <= 63
+                && !label.starts_with('-')
+                && !label.ends_with('-')
+                && label
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'-')
+        })
+}
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum ConfigError {
@@ -48,6 +66,17 @@ pub struct Config {
     pub min_free_disk_percent: u8,
     /// Hour (UTC, 0-23) the daily backup runs.
     pub daily_backup_hour_utc: u8,
+    /// TCP port of the local web panel.
+    pub panel_port: u16,
+    /// Address the panel listens on (`0.0.0.0` for the LAN, `::` for dual stack).
+    pub panel_bind: String,
+    /// Name the panel answers to besides `localhost` and private IP literals
+    /// (the Host-header allow-list; also used in the URL shown by `pair`).
+    pub panel_hostname: String,
+    /// How long a pairing code stays valid.
+    pub pairing_code_ttl_secs: u64,
+    /// How long a paired phone stays signed in without being used.
+    pub session_ttl_secs: u64,
 }
 
 impl Default for Config {
@@ -67,6 +96,11 @@ impl Default for Config {
             max_consecutive_failures: 3,
             min_free_disk_percent: 15,
             daily_backup_hour_utc: 4,
+            panel_port: DEFAULT_PANEL_PORT,
+            panel_bind: "0.0.0.0".into(),
+            panel_hostname: DEFAULT_PANEL_HOSTNAME.into(),
+            pairing_code_ttl_secs: 600,
+            session_ttl_secs: 30 * 24 * 3600,
         }
     }
 }
@@ -104,6 +138,24 @@ impl Config {
         }
         if self.daily_backup_hour_utc > 23 {
             return bad("daily_backup_hour_utc must be between 0 and 23");
+        }
+        if self.panel_port < 1024 {
+            return bad("panel_port must be 1024 or higher (the panel runs without privileges)");
+        }
+        if self.panel_port == self.mc_port {
+            return bad("panel_port and mc_port must differ");
+        }
+        if self.panel_bind.parse::<std::net::IpAddr>().is_err() {
+            return bad("panel_bind must be an IP address such as 0.0.0.0 or ::");
+        }
+        if !is_plain_hostname(&self.panel_hostname) {
+            return bad("panel_hostname must be a plain hostname such as craft-a-server.local");
+        }
+        if !(60..=86_400).contains(&self.pairing_code_ttl_secs) {
+            return bad("pairing_code_ttl_secs must be between 60 and 86400");
+        }
+        if !(3_600..=365 * 24 * 3600).contains(&self.session_ttl_secs) {
+            return bad("session_ttl_secs must be between 3600 and 31536000");
         }
         if self.image.is_empty() || self.image.chars().any(char::is_whitespace) {
             return bad("image must be a non-empty reference without spaces");
@@ -165,11 +217,74 @@ mod tests {
             "daily_backup_hour_utc = 24",
             "max_consecutive_failures = 0",
             "image = \"a b\"",
+            "panel_port = 80",
+            "panel_port = 25565",
+            "panel_bind = \"localhost\"",
+            "panel_bind = \"\"",
+            "panel_hostname = \"evil.com:80\"",
+            "panel_hostname = \"a@b\"",
+            "panel_hostname = \"host.\"",
+            "panel_hostname = \"-x.local\"",
+            "panel_hostname = \"\"",
+            "pairing_code_ttl_secs = 5",
+            "pairing_code_ttl_secs = 100000",
+            "session_ttl_secs = 60",
         ] {
             assert!(
                 matches!(Config::from_toml(doc), Err(ConfigError::Invalid(_))),
                 "{doc} should be invalid"
             );
+        }
+    }
+
+    #[test]
+    fn panel_defaults_and_overrides() -> Result<(), ConfigError> {
+        let d = Config::default();
+        assert_eq!(d.panel_port, 8080);
+        assert_eq!(d.panel_bind, "0.0.0.0");
+        assert_eq!(d.panel_hostname, "craft-a-server.local");
+        assert_eq!(d.pairing_code_ttl_secs, 600);
+        assert_eq!(d.session_ttl_secs, 2_592_000);
+        let c = Config::from_toml(
+            "panel_port = 18080
+panel_bind = \"::\"
+panel_hostname = \"mc.home\"
+             pairing_code_ttl_secs = 300
+session_ttl_secs = 86400
+",
+        )?;
+        assert_eq!((c.panel_port, c.panel_bind.as_str()), (18080, "::"));
+        assert_eq!(c.panel_hostname, "mc.home");
+        Ok(())
+    }
+
+    #[test]
+    fn hostname_validation() {
+        for ok in ["craft-a-server.local", "a", "mc.home", "X1.example"] {
+            assert!(is_plain_hostname(ok), "{ok}");
+        }
+        for bad in [
+            "",
+            ".",
+            "a..b",
+            "a.",
+            "-a",
+            "a-",
+            "a b",
+            "a:80",
+            "a/b",
+            "a@b",
+            "é.local",
+            &"a".repeat(64),
+            &format!(
+                "{}.{}.{}.{}.b",
+                "a".repeat(63),
+                "a".repeat(63),
+                "a".repeat(63),
+                "a".repeat(63)
+            ),
+        ] {
+            assert!(!is_plain_hostname(bad), "{bad}");
         }
     }
 

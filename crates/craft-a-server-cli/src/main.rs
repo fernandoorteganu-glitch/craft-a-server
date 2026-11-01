@@ -122,6 +122,12 @@ fn render_response(cmd: &Cmd, response: &Response) -> String {
         }
         (Cmd::Delete { id }, Response::Ok) => format!("Deleted server {}.", render::sanitize(id)),
         (Cmd::Backup { .. }, Response::Ok) => "Backup restored.".to_owned(),
+        (
+            Cmd::Devices {
+                action: args::DevicesCmd::Revoke { id },
+            },
+            Response::Ok,
+        ) => format!("Signed out device {}.", render::sanitize(id)),
         (_, Response::Server(s)) => render::render_server(s),
         (_, Response::Servers(list)) => render::render_servers(list),
         (_, Response::Backups(list)) => render::render_backups(list),
@@ -145,10 +151,26 @@ fn render_response(cmd: &Cmd, response: &Response) -> String {
                 render::sanitize(daemon_version)
             )
         }
+        (
+            _,
+            Response::PairingCode {
+                code,
+                expires_unix,
+                url,
+                alt_urls,
+            },
+        ) => render::render_pairing(code, *expires_unix, now_unix(), url, alt_urls),
+        (_, Response::Devices(list)) => render::render_devices(list),
         (_, Response::Diagnose(d)) => render::render_diagnose(d, CLI_VERSION, PROTOCOL_VERSION),
         (_, Response::Ok) => "Done.".to_owned(),
         (_, Response::Error { message, .. }) => render::sanitize(message),
     }
+}
+
+fn now_unix() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
 }
 
 fn logs_follow(cli: &Cli, client: &mut Client, id: &str) -> u8 {

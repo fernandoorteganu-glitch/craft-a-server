@@ -4,4 +4,5 @@ pub mod backup;
 pub mod ctl;
 pub mod db;
 pub mod lifecycle;
+pub mod panel;
 pub mod runtime;

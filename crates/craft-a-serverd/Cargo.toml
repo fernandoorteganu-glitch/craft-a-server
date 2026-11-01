@@ -22,6 +22,9 @@ tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "process"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 zstd = "0.14.3"
+axum = { version = "0.8.9", default-features = false, features = ["tokio", "http1", "form", "json", "matched-path"] }
+askama = { version = "0.16.1", default-features = false, features = ["derive", "std"] }
+serde_urlencoded = { version = "0.7.1", default-features = false }
 
 [lints]
 workspace = true
@@ -29,6 +32,7 @@ workspace = true
 [dev-dependencies]
 proptest = "1.12.0"
 tempfile = "3.27.0"
+tower = { version = "0.5.3", default-features = false, features = ["util"] }
 
 [target."cfg(unix)".dependencies]
 rustix = { version = "1.1.6", features = ["fs", "process", "net"] }

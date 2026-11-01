@@ -20,16 +20,21 @@ pub struct EgressPolicy {
 impl Default for EgressPolicy {
     fn default() -> Self {
         Self {
-            ruleset: DEFAULT_EGRESS_RULESET.to_owned(),
+            ruleset: normalize_newlines(DEFAULT_EGRESS_RULESET),
         }
     }
+}
+
+/// `nft` rejects CRLF, and a Windows checkout embeds the file with them.
+fn normalize_newlines(text: &str) -> String {
+    text.replace("\r\n", "\n")
 }
 
 impl EgressPolicy {
     /// Uses a custom ruleset. It must define `table inet craft_egress`, otherwise
     /// the post-apply verification (and therefore every start) would fail closed.
     pub fn from_ruleset(ruleset: impl Into<String>) -> Result<Self, RuntimeError> {
-        let ruleset = ruleset.into();
+        let ruleset = normalize_newlines(&ruleset.into());
         if !ruleset.contains(&format!("table inet {EGRESS_TABLE}")) {
             return Err(RuntimeError::Egress(format!(
                 "ruleset does not define table inet {EGRESS_TABLE}"
@@ -58,6 +63,14 @@ mod tests {
     fn default_defines_the_verified_table() {
         assert!(DEFAULT_EGRESS_RULESET.contains("table inet craft_egress"));
         assert!(EgressPolicy::default().ruleset().contains("192.168.0.0/16"));
+    }
+
+    #[test]
+    fn crlf_rulesets_are_normalised_for_nft() -> Result<(), RuntimeError> {
+        let p = EgressPolicy::from_ruleset("table inet craft_egress {\r\n}\r\n")?;
+        assert!(!p.ruleset().contains('\r'));
+        assert!(!EgressPolicy::default().ruleset().contains('\r'));
+        Ok(())
     }
 
     #[test]

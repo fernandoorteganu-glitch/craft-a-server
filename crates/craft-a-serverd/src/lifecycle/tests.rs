@@ -719,3 +719,16 @@ async fn giving_up_on_a_crash_loop_turns_auto_start_off() -> TestResult {
     assert!(!h.svc.get_server(&id)?.auto_start);
     Ok(())
 }
+
+#[tokio::test]
+async fn the_image_tag_follows_the_minecraft_version() -> TestResult {
+    let h = harness();
+    let old = h.svc.create_server("Old", "1.20.1", true).await?;
+    let new = h.svc.create_server("New", "26.3", true).await?;
+    let plan = craft_a_server_core::memory::plan(8 * GIB, 1536, None)?;
+    let image_of =
+        |id: &str| -> Result<String> { Ok(h.svc.build_spec(&h.svc.get_row(id)?, &plan).image) };
+    assert!(image_of(&old.id)?.ends_with(":java17"));
+    assert!(image_of(&new.id)?.ends_with(":java25"));
+    Ok(())
+}
