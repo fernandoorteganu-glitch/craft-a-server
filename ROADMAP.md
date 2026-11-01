@@ -311,8 +311,8 @@ Findings to carry forward:
 - **Control socket allows only the same uid or root**, not the whole `craft-a-server` group (stricter than first planned). The installer must provide a root-run wrapper for `craft-a-server pair`/CLI use.
 - Backups include regenerable files (server jar, `libraries/`): ~63 MiB for an empty world. Excluding them (re-downloaded by the image) is a cheap size win; must be tested with restore before adopting.
 - Not verified: `logs -f` through the CLI, a denied foreign uid on the socket, a real reboot with linger ordering, uid other than 1000, IPv6/DNS egress behaviour on a real LAN (needs the QEMU VM).
-- Auto-restart of servers that were running before a machine reboot is **not** implemented: reconcile marks them `failed` ("not running after a restart of the system"). Needs a product decision (appliance UX suggests auto-start).
-- Java/image-tag mapping per Minecraft version still unresolved (currently `latest`).
+- Auto-restart after reboot: implemented after Phase 1 (see Decisions log).
+- Java/image-tag mapping: resolved after Phase 1 (see Decisions log).
 
 Next: Phase 2 (local panel). It is security-critical (pairing, sessions, CSRF, Host/Origin checks, CSP); per our working rules I will confirm the open points below before building.
 
@@ -331,3 +331,9 @@ Next: Phase 2 (local panel). It is security-critical (pairing, sessions, CSRF, H
 | 2026-11-01 | Hardening profile verified with itzg image: pod `--userns=keep-id`, `--user <uid>:<gid>`, read-only, tmpfs /tmp, cap-drop ALL; RCON via `podman exec rcon-cli`, never published | Publish RCON | Spike B, `docs/spikes/itzg-image.md` |
 | 2026-11-01 | playit.gg stays default tunnel; pin agent v1.2.0 with our own embedded SHA-256 (upstream ships no signatures); run with `--secret-path`/`--socket-path`; claim via generated code + `claim exchange`; address via rundata API (undocumented) | Parse daemon stdout | Spike C, `docs/spikes/playit-agent.md`; "zero manual steps" unproven, one browser click assumed |
 | 2026-11-01 | Modrinth: search `server_side` required OR optional; resolve from `dependencies[]`; verify sha512; download only from `cdn.modrinth.com`, no redirects; ~5 req/s limiter | `/dependencies` endpoint (unusable) | Spike D, `docs/spikes/modrinth-api.md`, fixtures in `crates/craft-a-serverd/tests/fixtures/modrinth` |
+| 2026-11-01 | Auto-start: servers with `auto_start` are restored after reboot or power cut; explicit stop, failed start or crash-loop give-up clear the flag | Mark `failed` after reboot | User approved (appliance UX); migration v2 |
+| 2026-11-01 | Pairing code 8 chars (`23456789ABCDEFGHJKLMNPQRSTUVWXYZ`), 10 min, single-use, stored hashed; sessions 30 days sliding, hashed token, `HttpOnly; SameSite=Strict` cookie without `Secure` (plain-HTTP LAN) | Longer codes, HTTPS with self-signed cert | User approved defaults; accepted LAN-HTTP risk; migration v3 |
+| 2026-11-01 | Image tag follows the Minecraft version (`core/src/image.rs`: 1.<=16 java8, 1.17-1.20.4 java17, 1.20.5+ java21, 26.x java25); only `:latest`/untagged is rewritten | Always `latest` (breaks old worlds) | Closes the Phase 1 open point |
+| 2026-11-01 | Egress ruleset drops all IPv6 | Prefix list of ULA/link-local | LAN devices hold global IPv6 addresses in the host subnet; a prefix list cannot tell them from the internet |
+| 2026-11-01 | Egress ruleset text is CRLF-normalised before `nft` | Trust the checkout | A Windows write produced CRLF and `nft` refused it; the fail-closed path blocked the start as designed |
+| 2026-11-01 | Panel security core (peer filter, Host/Origin, CSRF, CSP, rate limits, route-auth table) committed as `038dedc` | — | Phase 2A; htmx/CSP not yet exercised in a real browser |
