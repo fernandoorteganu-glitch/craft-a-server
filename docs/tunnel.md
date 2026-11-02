@@ -1,7 +1,8 @@
 # Online play (optional playit.gg tunnel)
 
-Status: built and tested against fakes only. It has never run against a real
-playit account. See "Not verified" below before relying on it.
+Status: **first real run succeeded on 2026-11-02** (see "Verified against the real service" below).
+Everything else is still tested against fakes only, and long-term behaviour is unproven.
+See "Not verified" before relying on it.
 
 The tunnel is OFF by default. When the owner turns it on, the daemon downloads
 a pinned playit agent, runs it as a child process on the host, and shows the
@@ -96,22 +97,24 @@ Maintainer procedure to update (or to fill a placeholder):
 While an entry holds `PLACEHOLDER_SHA256` it can never match, so install fails
 closed and the tunnel shows an error instead of running anything.
 
-## Not verified (needs a real playit claim)
+## Verified against the real service (2026-11-02)
 
-Everything above is tested with fake agent scripts and a fake HTTP client.
-These points have not been observed against the real service:
+One run on a fresh Debian 13 machine (WSL2) with the published v0.0.2 release:
 
-- The real `playit-cli setup` output format, and that it works with only
-  `--socket-path`; the claim-link extraction is a defensive regex over lines.
-- That playitd writes the secret file only after the claim is approved.
-- The `rundata` endpoint, the `Authorization: agent-key <hex>` scheme and the
-  JSON shape (undocumented upstream; the parser ignores unknown fields).
-- Whether a guest or fresh account can create the Minecraft Java tunnel, and
-  free plan limits.
-- Real download through the GitHub redirect hosts.
-- SIGTERM behaviour and reconnect timing of the real agent, a 24 h soak, and a
-  join from behind CGNAT.
+- The pinned agent (v1.2.0) downloaded from GitHub through its redirect hosts and passed the embedded SHA-256 check.
+- `playit-cli setup` produced a claim link in the expected form (`https://playit.gg/claim/<code>`); the daemon showed it, and a person approved it in a browser. The panel/CLI then moved to "Linked ... waiting for a Minecraft Java tunnel".
+- The Minecraft Java tunnel was created by hand in the playit dashboard (origin `127.0.0.1:25565`, PROXY protocol off).
+- The daemon read the public address from the `rundata` API with the `agent-key` header and showed it: a host under `tun.ply.gg` **plus a non-default port** (the dashboard headline showed only the host name; the join address is `host:port`).
+- A status ping from a second machine over the internet got the server's answer in about 100 ms; a real Minecraft Java 26.3 client joined (whitelisted account) and the ping then showed 1 of 20 players.
+- Notes: the free-plan address is not `25565`, so people must be given the full `host:port`. PROXY protocol must stay off (vanilla/Fabric servers do not understand it); the server therefore sees the agent's address, not the player's, which is fine because access is by whitelist.
+
+## Not verified
+
+- Whether the claim and `rundata` formats stay stable (both are undocumented upstream); the parsers are defensive and fail closed.
+- That a *guest* account can keep the tunnel indefinitely, and the free-plan limits and idle expiry.
+- SIGTERM behaviour and reconnect timing of the real agent, a 24 h soak, restarts of the daemon and machine with the tunnel on, and a join from behind CGNAT.
 - The aarch64 binaries have never been executed.
+- Behaviour with more than one player or with several servers.
 
 If the claim output changes, no link is ever published and the claim program
 is retried after a while; the panel keeps showing "getting ready". A rundata
