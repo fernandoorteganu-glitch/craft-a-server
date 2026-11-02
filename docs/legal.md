@@ -80,3 +80,21 @@ The project owner pasted the text of `minecraft.net/en-us/usage-guidelines` into
 | Mojang does not give advice on whether a project complies; "speak to an attorney" | No lawyer has reviewed this | **Open: owner's decision** |
 
 Remaining before wide promotion: publisher name and contact address (above), the GitHub "About" line, reading the EULA, a trademark search, and an attorney's opinion if the owner wants certainty.
+
+## Checked against the official EULA, 2026-11-02
+
+The project owner pasted the text of the Minecraft EULA (`minecraft.net/en-us/eula`) into the working session. The comparison below is against that text. Neither document was retrieved automatically, and neither is legal advice.
+
+| What the EULA says | Where the project stands | Status |
+|---|---|---|
+| "For the server version of Minecraft: Java Edition, you can install it on a server and host online play." | The server software is installed and run on the user's own machine, by the user's own action | OK |
+| Do not "give copies of our game software or content to anyone else", "make commercial use of anything we've made", or "try to make money from" it | The project bundles no Mojang software; the container image downloads the server from Mojang's servers on the user's machine (per `docs/spikes/itzg-image.md`; the exact download hosts are not re-verified here). The project sells nothing | OK |
+| Game downloads and updates must "come from a source that we authorize" | Mojang's own download servers via the upstream image; our own updater only downloads this project's signed releases | OK, with the caveat in the line above |
+| Mods are fine to distribute; "Modded Versions" of the game or server software are not | The project distributes no mods and no modified game. Mods are downloaded by the user's server from Modrinth and combined with the game only on that machine | OK |
+| Third-party tools must not "seem official", for example by using Mojang's logos | Name, disclaimer and visuals as in the Usage Guidelines table above | OK |
+| The user agrees to the EULA when they click to accept it | The panel's create screen has an unticked, required checkbox plus a link to the EULA; the CLI refuses without `--accept-eula` and prints the link. The daemon sets `EULA=TRUE` for the container only after that explicit act and never by default | OK |
+| Realms rules (no selling access to a Realm) | Not applicable: this is not Realms | n/a |
+
+**Design guardrail that comes from this reading.** Backups contain copies of Mojang's server jar and libraries (see ROADMAP §7c: kept in backups for offline restore). They live only on the user's own disk. Any future feature that uploads, publishes or shares a backup or a world must first remove those files (or avoid them), because handing a copy of the game software to someone else is what the EULA forbids.
+
+**Still open (owner's decisions):** a trademark search; an attorney's opinion if certainty is wanted (Mojang says it cannot advise on compliance); re-reading both documents before each public release, because both say they can change at any time.
