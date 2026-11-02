@@ -2,7 +2,7 @@
 
 Turn a mini PC into a Minecraft (Java, Fabric) server you manage from your phone — no Linux, Java or router knowledge needed.
 
-> Status: **pre-alpha**. The daemon, panel, mods and optional tunnel are built; the installer and release pipeline are written and tested locally, but **no signed release exists yet** (no signing key, no repository), so the install steps below cannot be followed end to end today. See [ROADMAP.md](ROADMAP.md) and the honest list of gaps in [docs/security-review.md](docs/security-review.md). Do not expose this to people you do not trust until an external review has happened.
+> Status: **pre-alpha**. Signed releases are on the [releases page](https://github.com/fernandoorteganu-glitch/craft-a-server/releases). So far it has only been tested on Debian 13 in virtual machines (WSL2): not yet on a real mini PC, a real home network, a real phone, or with a friend joining through the optional tunnel. See [ROADMAP.md](ROADMAP.md) and the honest list of gaps in [docs/security-review.md](docs/security-review.md). **Do not expose this to people you do not trust until an external security review has happened.** Report security problems privately: see [SECURITY.md](SECURITY.md).
 
 *Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.*
 
@@ -13,7 +13,13 @@ Requirements: a machine with systemd, 4 GB RAM or more, 10 GB free disk, on your
 There is deliberately no `curl | sh`. You download a release, check it, then run its installer:
 
 1. Download the release files for your CPU from the project's releases page into one directory: `SHA256SUMS`, `SHA256SUMS.minisig` and `craft-a-server-<version>-<target>.tar.gz`.
-2. Compare the public key with a second source you trust (the repository README or a signed tag) before trusting anything signed by it: the key is the second line of `deploy/release-pubkey.pub` in the repository.
+2. Check the public key before trusting anything signed by it. The release key (minisign key id `CE74C77C6EAF790C`) is:
+
+   ```
+   RWQMea9ufMd0zqv+KCL7vaMIHtVE9VxtLwi1AZDCYPFEx5Rvu/aD0VGm
+   ```
+
+   It must match the last line of `deploy/release-pubkey.pub` in the repository. Verify the files yourself with `minisign -V -P <that key> -m SHA256SUMS -x SHA256SUMS.minisig` and `sha256sum -c --ignore-missing SHA256SUMS`.
 3. Unpack the archive, look at what the installer will do, then run it as root:
 
    ```sh
