@@ -16,3 +16,7 @@ Examples of what is in scope: bypassing pairing or the panel's login, reaching t
 ## Supported versions
 
 Only the latest release is supported.
+
+## Publisher
+
+Published by the GitHub user [fernandoorteganu-glitch](https://github.com/fernandoorteganu-glitch). Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.

@@ -52,6 +52,10 @@ From the panel you create the server (you accept the Minecraft EULA yourself), a
 - **Online play (playit.gg) is optional and off by default.** It sends your server's traffic and your players' IP addresses through a third party. The panel explains this before you turn it on. See [docs/tunnel.md](docs/tunnel.md).
 - Backups are made daily and before every change; test a restore once.
 
+## Who is responsible
+
+craft-a-server is a personal open-source project published by the GitHub user [fernandoorteganu-glitch](https://github.com/fernandoorteganu-glitch). It is not made, published, endorsed or supported by Mojang or Microsoft, and Mojang and Microsoft are not responsible for it. The publisher is responsible for this software; you are responsible for the servers you run with it. To contact the publisher, use the profile above, or report a security problem privately as described in [SECURITY.md](SECURITY.md). There is no paid product, no purchases and no telemetry.
+
 ## Running a server for other people
 
 Hosting a Minecraft server for others is covered by Mojang's [Usage Guidelines](https://www.minecraft.net/en-us/usage-guidelines) (see "Servers and hosting") and the [EULA](https://www.minecraft.net/en-us/eula). In short, only players with a genuine copy may join (craft-a-server keeps online mode on and gives you no switch to turn it off), and if you charge for access you must follow the rules there, for example no pay-to-win. You are responsible for your server and for your players' data. craft-a-server does not sell anything.
