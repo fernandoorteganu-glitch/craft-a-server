@@ -16,7 +16,7 @@ bad() { fail=$((fail+1)); echo "FAIL $*"; }
 chk() { d=$1; shift; if "$@" >/dev/null 2>&1; then ok "$d"; else bad "$d"; fi; }
 
 echo "== apt dry run (package names exist)"
-apt-get install -s --no-install-recommends podman nftables passt uidmap avahi-daemon minisign ca-certificates >"$T/apt.out" 2>&1 && ok "apt-get -s install of the dependency list resolves" || { bad "apt dry run"; tail -3 "$T/apt.out"; }
+apt-get install -s --no-install-recommends podman catatonit dbus-user-session nftables passt uidmap avahi-daemon minisign ca-certificates >"$T/apt.out" 2>&1 && ok "apt-get -s install of the dependency list resolves" || { bad "apt dry run"; tail -3 "$T/apt.out"; }
 
 minisign -G -W -p "$T/a.pub" -s "$T/a.key" -f >/dev/null
 KEYA=$(sed -n 2p "$T/a.pub")

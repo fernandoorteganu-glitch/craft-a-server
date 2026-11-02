@@ -279,7 +279,11 @@ ensure_minisign() {
         die "minisign is required to verify the release; install it: apt-get install minisign"
     fi
     info "Installing minisign (needed to verify the release) ..."
-    env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends minisign
+    # A fresh machine has no package lists yet.
+    env DEBIAN_FRONTEND=noninteractive apt-get update ||
+        die "apt-get update failed, so minisign could not be installed and the release cannot be verified"
+    env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends minisign ||
+        die "installing minisign failed, so the release cannot be verified"
 }
 
 # verify_release DIR: sets ARCHIVE (path), VERSION_NEW. Exits on any failure.
@@ -369,10 +373,10 @@ insecure_payload() {
 # --- system setup ------------------------------------------------------------------------
 install_deps() {
     [ "$SKIP_DEPS" = 1 ] && return 0
-    info "Installing packages (podman, nftables, passt, uidmap, avahi-daemon, minisign) ..."
+    info "Installing packages (podman, catatonit, dbus-user-session, nftables, passt, uidmap, avahi-daemon, minisign) ..."
     sys apt-get update
     sys env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        podman nftables passt uidmap avahi-daemon minisign ca-certificates
+        podman catatonit dbus-user-session nftables passt uidmap avahi-daemon minisign ca-certificates
     if [ -z "$DESTDIR" ] && [ "$PLAN" = 0 ]; then
         pv=$(podman --version 2>/dev/null | awk '{ print $3 }' || true)
         pmaj=${pv%%.*}
@@ -691,7 +695,9 @@ main() {
         if verify_release "$RELEASE_DIR"; then
             unpack_release
         else
-            # Only reachable in --plan without minisign: show the plan using a placeholder.
+            # Reachable only in --plan without minisign: show the plan using a
+            # placeholder. Any real run that could not verify must stop here.
+            [ "$PLAN" = 1 ] || die "the release could not be verified, so nothing was installed"
             VERSION_NEW=unverified
             mkdir -p "$WORK/payload"
             for f in craft-a-serverd craft-a-server install.sh uninstall.sh craft-a-serverd.service config.toml.example VERSION; do : >"$WORK/payload/$f"; done

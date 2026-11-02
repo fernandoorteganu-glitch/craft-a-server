@@ -74,6 +74,15 @@ expect_fail "signed archive with ../ members refused" $I --release-dir "$T/relS"
 expect_fail "missing --release-dir refused" $I --destdir "$T/x7" --yes
 expect_fail "unknown option refused" $I --bogus
 
+# A clean machine: no minisign, and apt-get cannot install it. The installer must
+# stop (it once fell through and installed an empty placeholder release).
+mkdir -p "$T/nomini"
+for f in /usr/bin/*; do b=${f##*/}; [ "$b" = minisign ] || [ "$b" = apt-get ] || ln -sf "$f" "$T/nomini/$b"; done
+printf '#!/bin/sh\necho "apt-get stub: no network" >&2\nexit 100\n' > "$T/nomini/apt-get"; chmod +x "$T/nomini/apt-get"
+PATH="$T/nomini" sh "$T/src/install.sh" --release-dir "$T/rel1" --yes >"$T/out" 2>&1 && bad "installed without being able to verify" || ok "no minisign and no way to get it: installer stops"
+grep -q "cannot be verified\|could not be verified" "$T/out" && ok "  reason is the failed verification" || bad "  wrong reason: $(cat "$T/out")"
+[ ! -e /opt/craft-a-server/releases/unverified ] && ok "  no placeholder release was installed" || bad "  placeholder release installed"
+
 echo "== plan"
 expect_ok "plan mode runs" $I --release-dir "$T/rel1" --destdir "$D" --plan
 [ ! -e "$D" ] && ok "  plan created nothing" || bad "  plan created $D"
