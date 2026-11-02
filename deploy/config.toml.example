@@ -41,4 +41,4 @@
 
 # Where `craft-a-server update` looks for signed releases (https only). Nothing
 # is contacted until an administrator runs the command.
-# update_url = "https://github.com/OWNER/craft-a-server/releases/latest/download"
+# update_url = "https://github.com/fernandoorteganu-glitch/craft-a-server/releases/latest/download"

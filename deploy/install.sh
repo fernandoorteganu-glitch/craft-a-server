@@ -576,7 +576,7 @@ FWRULES
     write_file 0644 "$(dp "$UNIT_DIR/craft-a-server-firewall.service")" <<FWUNIT
 [Unit]
 Description=craft-a-server host firewall (nftables table inet $FW_TABLE)
-Documentation=https://github.com/OWNER/craft-a-server
+Documentation=https://github.com/fernandoorteganu-glitch/craft-a-server
 After=network-pre.target nftables.service
 Before=network.target
 

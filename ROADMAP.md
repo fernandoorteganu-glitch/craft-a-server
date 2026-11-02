@@ -295,7 +295,7 @@ Carried into Phase 1 / later:
 - Java-per-Minecraft-version image-tag matrix (MC is now versioned 26.x) must be built from the itzg docs.
 - playit: "zero manual steps" unproven; tunnel API auth header, tunnel creation by agent key, and free-plan limits need a real claim in Phase 4 (needs the user's browser).
 - Mojang usage guidelines/EULA must be read from official sources before publishing.
-- Repo owner placeholder `OWNER` in `Cargo.toml`; name/domain check still open.
+- Repo owner set to fernandoorteganu-glitch (2026-11-02); name/domain check still open.
 
 ## 7c. Phase 1 status (2026-11-01): complete, exit criterion met
 

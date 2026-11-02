@@ -70,7 +70,7 @@ Only `SHA256SUMS` is signed; it authenticates every other file by hash. Both the
    ```
 
    Ideally also install it on a clean Debian VM (ROADMAP Phase 5 metrics).
-6. Publish the draft. `https://github.com/OWNER/craft-a-server/releases/latest/download/` (the default `update_url`) now serves it; drafts are never "latest".
+6. Publish the draft. `https://github.com/fernandoorteganu-glitch/craft-a-server/releases/latest/download/` (the default `update_url`) now serves it; drafts are never "latest".
 
 A manual run of the workflow (`workflow_dispatch`) builds and uploads the artifacts for 14 days and **does not sign or publish**; use it to test the build.
 

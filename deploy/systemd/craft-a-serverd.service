@@ -45,7 +45,7 @@
 
 [Unit]
 Description=craft-a-server daemon (Minecraft server manager)
-Documentation=https://github.com/OWNER/craft-a-server
+Documentation=https://github.com/fernandoorteganu-glitch/craft-a-server
 After=network-online.target
 Wants=network-online.target
 

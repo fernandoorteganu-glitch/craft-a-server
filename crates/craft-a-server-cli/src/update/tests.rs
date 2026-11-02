@@ -142,13 +142,23 @@ fn settings_fail_closed() {
     );
     assert_eq!(
         Settings::new(
-            craft_a_server_core::config::DEFAULT_UPDATE_URL,
+            "https://github.com/OWNER/craft-a-server/releases/latest/download",
             key(),
             "x86_64",
             "0.0.1"
         )
         .err(),
-        Some(UpdateError::NotConfigured)
+        Some(UpdateError::NotConfigured),
+        "a leftover placeholder owner must stop updates"
+    );
+    assert!(
+        Settings::new(
+            craft_a_server_core::config::DEFAULT_UPDATE_URL,
+            key(),
+            "x86_64",
+            "0.0.1"
+        )
+        .is_ok()
     );
     assert_eq!(
         Settings::new(BASE, key(), "riscv64", "0.0.1").err(),

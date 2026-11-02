@@ -11,10 +11,10 @@ pub const DEFAULT_MC_PORT: u16 = 25565;
 pub const DEFAULT_PANEL_PORT: u16 = 8080;
 pub const DEFAULT_PANEL_HOSTNAME: &str = "craft-a-server.local";
 /// Where `craft-a-server update` looks for signed releases when `update_url`
-/// is not set. `OWNER` is a placeholder until the repository exists; the CLI
+/// is not set. The repository owner is fixed; the CLI
 /// refuses to use a URL that still contains it.
 pub const DEFAULT_UPDATE_URL: &str =
-    "https://github.com/OWNER/craft-a-server/releases/latest/download";
+    "https://github.com/fernandoorteganu-glitch/craft-a-server/releases/latest/download";
 
 /// True for an `https://host[:port][/path]` base address: printable ASCII
 /// without spaces, no credentials, query or fragment, at most 300 bytes.

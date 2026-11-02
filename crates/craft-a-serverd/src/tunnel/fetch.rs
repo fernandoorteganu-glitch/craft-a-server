@@ -455,6 +455,24 @@ mod tests {
 
     /// Answers the first request. With `echo_auth` the body says whether an
     /// `Authorization: agent-key abc` header arrived.
+    /// True once the headers and the `Content-Length` bytes of the body arrived.
+    fn request_complete(raw: &[u8]) -> bool {
+        let text = String::from_utf8_lossy(raw).to_ascii_lowercase();
+        let Some((head, body)) = text.split_once(
+            "
+
+",
+        ) else {
+            return false;
+        };
+        let wanted = head
+            .lines()
+            .find_map(|l| l.strip_prefix("content-length:"))
+            .and_then(|v| v.trim().parse::<usize>().ok())
+            .unwrap_or(0);
+        body.len() >= wanted
+    }
+
     fn serve(response: Option<Vec<u8>>) -> u16 {
         let listener = TcpListener::bind("127.0.0.1:0").map(|l| (l.local_addr(), l));
         let (addr, listener) = match listener {
@@ -463,10 +481,23 @@ mod tests {
         };
         std::thread::spawn(move || {
             if let Ok((mut stream, _)) = listener.accept() {
+                // Read the whole request (headers and any body) before
+                // replying: closing a socket with unread data makes Windows
+                // send a reset that can discard the reply.
+                let _ = stream.set_read_timeout(Some(std::time::Duration::from_millis(200)));
+                let mut raw = Vec::new();
                 let mut buf = [0_u8; 4096];
-                let n = stream.read(&mut buf).unwrap_or(0);
-                let request =
-                    String::from_utf8_lossy(buf.get(..n).unwrap_or_default()).to_ascii_lowercase();
+                loop {
+                    let n = stream.read(&mut buf).unwrap_or(0);
+                    if n == 0 {
+                        break;
+                    }
+                    raw.extend_from_slice(buf.get(..n).unwrap_or_default());
+                    if request_complete(&raw) {
+                        break;
+                    }
+                }
+                let request = String::from_utf8_lossy(&raw).to_ascii_lowercase();
                 let out = response.unwrap_or_else(|| {
                     let body = if request.contains("authorization: agent-key abc") {
                         "auth:yes"
