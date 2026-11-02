@@ -50,6 +50,7 @@ mod mapping;
 mod middleware;
 pub mod net;
 pub mod pages;
+mod perf_views;
 pub mod ratelimit;
 pub mod routes;
 pub mod strings;

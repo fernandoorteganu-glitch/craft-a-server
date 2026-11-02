@@ -17,6 +17,7 @@ pub mod egress;
 pub mod fake;
 pub mod podman;
 pub mod spec;
+pub mod stats;
 pub mod status;
 
 pub use egress::EgressPolicy;
@@ -99,6 +100,17 @@ impl ContainerInfo {
     }
 }
 
+/// One reading of what a running game container uses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ContainerStats {
+    /// Memory in use by the container (heap, non-heap and page cache).
+    pub mem_used_bytes: u64,
+    /// Total CPU time the container has used since it started.
+    pub cpu_time: Duration,
+    /// Processes and threads in the container.
+    pub pids: u32,
+}
+
 /// A pod carrying our label, found at boot reconciliation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagedPod {
@@ -141,6 +153,12 @@ pub trait ContainerRuntime: Send + Sync {
 
     fn inspect(&self, id: &str)
     -> impl Future<Output = Result<ContainerInfo, RuntimeError>> + Send;
+
+    /// One reading of the container's resource use; `None` when it is not running.
+    fn stats(
+        &self,
+        id: &str,
+    ) -> impl Future<Output = Result<Option<ContainerStats>, RuntimeError>> + Send;
 
     /// Follows the log from now on (use `logs_tail` for history). Lines are
     /// capped in length; dropping the receiver ends the follow.

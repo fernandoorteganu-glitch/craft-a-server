@@ -129,11 +129,7 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
         row: &ServerRow,
         plan: &memory::MemoryPlan,
     ) -> ServerContainerSpec {
-        let cpus = if self.cfg.cpus == 0 {
-            std::thread::available_parallelism().map_or(1, |n| n.get() as u32)
-        } else {
-            self.cfg.cpus
-        };
+        let cpus = self.effective_cpus();
         ServerContainerSpec {
             id: row.id.clone(),
             mc_version: row.mc_version.clone(),
@@ -149,6 +145,7 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
             stop_timeout_secs: u32::try_from(self.cfg.stop_timeout_secs).unwrap_or(u32::MAX),
             eula_accepted: true,
             rcon_password: row.rcon_password.clone(),
+            view_distance: crate::settings::load(&self.server_dir(&row.id)).view_distance,
         }
     }
 

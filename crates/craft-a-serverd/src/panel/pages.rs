@@ -38,7 +38,7 @@ pub fn page<T: Template>(
 }
 
 /// A signed-in screen with its navigation entry highlighted
-/// (`home`, `backups`, `players`, `logs`, `mods` or `settings`).
+/// (`home`, `backups`, `players`, `logs`, `mods`, `performance`, `online` or `settings`).
 pub fn screen<T: Template>(
     title: &str,
     active: &str,

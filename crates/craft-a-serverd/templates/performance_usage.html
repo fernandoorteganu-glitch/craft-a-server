@@ -1,0 +1,46 @@
+<section id="perf-usage" class="card" hx-get="/partials/performance" hx-trigger="every 3s" hx-swap="outerHTML">
+<h2>{{ crate::panel::strings::PERF_USAGE }}</h2>
+{% if !has_server %}
+<p>{{ crate::panel::strings::ERR_NO_SERVER }}</p>
+{% else %}
+{% if !running %}
+<p class="note">{{ crate::panel::strings::PERF_NOT_RUNNING }}</p>
+{% else %}
+{% if let Some(g) = game %}
+<h3>{{ crate::panel::strings::PERF_GAME }}</h3>
+<dl class="facts">
+<dt>{{ crate::panel::strings::PERF_GAME_MEMORY }}</dt>
+<dd>{{ g.memory_text }}{% if let Some(limit) = g.memory_limit_text %} / {{ limit }}{% endif %}
+{% if let Some(pct) = g.memory_percent %}<progress max="100" value="{{ pct }}" aria-label="{{ crate::panel::strings::PERF_GAME_MEMORY }}">{{ pct }}%</progress>{% endif %}</dd>
+{% if let Some(heap) = g.heap_text %}
+<dt>{{ crate::panel::strings::PERF_GAME_HEAP }}</dt>
+<dd>{{ heap }}</dd>
+{% endif %}
+<dt>{{ crate::panel::strings::PERF_GAME_CPU }}</dt>
+<dd>{% if let Some(cpu) = g.cpu_text %}{{ cpu }}{% else %}{{ crate::panel::strings::PERF_MEASURING }}{% endif %}</dd>
+<dt>{{ crate::panel::strings::PERF_GAME_PROCESSES }}</dt>
+<dd>{{ g.pids_text }}</dd>
+</dl>
+{% else %}
+<p class="note">{{ crate::panel::strings::PERF_NO_READING }}</p>
+{% endif %}
+{% endif %}
+{% if let Some(h) = host %}
+<h3>{{ crate::panel::strings::PERF_MACHINE }}</h3>
+<dl class="facts">
+<dt>{{ crate::panel::strings::PERF_MACHINE_MEMORY }}</dt>
+<dd>{{ h.memory_text }}
+<progress max="100" value="{{ h.memory_percent }}" aria-label="{{ crate::panel::strings::PERF_MACHINE_MEMORY }}">{{ h.memory_percent }}%</progress></dd>
+<dt>{{ crate::panel::strings::PERF_MACHINE_LOAD }}</dt>
+<dd>{{ h.load_text }}</dd>
+{% if let Some(disk) = h.disk_text %}
+<dt>{{ crate::panel::strings::PERF_MACHINE_DISK }}</dt>
+<dd>{{ disk }}</dd>
+{% endif %}
+</dl>
+{% for warning in h.warnings %}
+<p class="note" role="status">{{ warning }}</p>
+{% endfor %}
+{% endif %}
+{% endif %}
+</section>

@@ -97,6 +97,7 @@ pub const BUSY_CREATE: &str = "Creating the server.";
 pub const DONE_BACKUP: &str = "Backup created.";
 pub const DONE_RESTORE: &str = "Backup restored.";
 pub const ERR_BUSY_ACTION: &str = "Another action is still running. Wait for it to finish";
+pub const ERR_VIEW_DISTANCE: &str = "Choose one of the view distances in the list";
 pub const ERR_NO_SERVER: &str = "There is no server yet. Create one first";
 pub const ERR_SERVER_EXISTS: &str = "A server already exists. Delete it before creating another";
 pub const ERR_ACTION_FAILED: &str = "That did not work. Details are in the daemon log";
@@ -265,3 +266,32 @@ pub const ONLINE_DISCLOSURE_IPS: &str = craft_a_server_core::tunnel::DISCLOSURE_
 pub const ONLINE_DISCLOSURE_POLICY: &str = craft_a_server_core::tunnel::DISCLOSURE_POLICY;
 pub const ONLINE_DISCLOSURE_ACCOUNT: &str = craft_a_server_core::tunnel::DISCLOSURE_ACCOUNT;
 pub const ONLINE_DISCLOSURE_OFF: &str = craft_a_server_core::tunnel::DISCLOSURE_OFF;
+
+pub const NAV_PERFORMANCE: &str = "Performance";
+pub const PERF_TITLE: &str = "Performance";
+pub const PERF_INTRO: &str = "See how much of this machine the server uses, and choose how far players can see. A smaller view distance is the easiest way to make a busy server run lighter.";
+pub const PERF_USAGE: &str = "Right now";
+pub const PERF_NOT_RUNNING: &str =
+    "The server is not running, so there is nothing to measure yet. Start it from Home.";
+pub const PERF_NO_READING: &str = "No reading from the game yet. This page updates by itself.";
+pub const PERF_GAME: &str = "The game";
+pub const PERF_GAME_MEMORY: &str = "Memory in use";
+pub const PERF_GAME_HEAP: &str = "Memory given to Java";
+pub const PERF_GAME_CPU: &str = "Processor";
+pub const PERF_GAME_PROCESSES: &str = "Processes";
+pub const PERF_MEASURING: &str = "Measuring...";
+pub const PERF_MACHINE: &str = "This machine";
+pub const PERF_MACHINE_MEMORY: &str = "Memory in use";
+pub const PERF_MACHINE_LOAD: &str = "Load (last minute)";
+pub const PERF_MACHINE_DISK: &str = "Free disk space";
+pub const PERF_WARN_MEMORY: &str =
+    "This machine is almost out of memory. Lower the view distance or stop other programs.";
+pub const PERF_WARN_DISK: &str =
+    "Free disk space is low. Delete old backups or the server may stop saving.";
+pub const PERF_VIEW_TITLE: &str = "View distance";
+pub const PERF_VIEW_HELP: &str = "How many chunks around each player the server sends. Higher looks better but costs a lot of memory and processor time; the number goes up with the square of the distance.";
+pub const PERF_VIEW_LABEL: &str = "Chunks";
+pub const PERF_VIEW_DEFAULT: &str = "game default";
+pub const PERF_VIEW_SAVE: &str = "Save";
+pub const PERF_VIEW_APPLIES: &str = "A change takes effect the next time the server starts. Restart it from Home when nobody is playing.";
+pub const DONE_VIEW_DISTANCE: &str = "View distance saved";

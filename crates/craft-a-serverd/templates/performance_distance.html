@@ -1,0 +1,21 @@
+{% import "macros.html" as m %}
+<section class="card">
+<h2>{{ crate::panel::strings::PERF_VIEW_TITLE }}</h2>
+{% include "banner.html" %}
+{% if !has_server %}
+<p>{{ crate::panel::strings::ERR_NO_SERVER }}</p>
+{% else %}
+<p class="note">{{ crate::panel::strings::PERF_VIEW_HELP }}</p>
+<form method="post" action="/performance/view-distance" class="form">
+{{ m::csrf_field(csrf_token) }}
+<label for="view_distance">{{ crate::panel::strings::PERF_VIEW_LABEL }}</label>
+<select id="view_distance" name="view_distance">
+{% for c in choices %}
+<option value="{{ c.value }}"{% if c.selected %} selected{% endif %}>{{ c.value }}{% if c.is_default %} ({{ crate::panel::strings::PERF_VIEW_DEFAULT }}){% endif %}</option>
+{% endfor %}
+</select>
+<button type="submit" class="btn">{{ crate::panel::strings::PERF_VIEW_SAVE }}</button>
+</form>
+<p class="note">{{ crate::panel::strings::PERF_VIEW_APPLIES }}</p>
+{% endif %}
+</section>

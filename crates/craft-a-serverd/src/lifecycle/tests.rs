@@ -732,3 +732,125 @@ async fn the_image_tag_follows_the_minecraft_version() -> TestResult {
     assert!(image_of(&new.id)?.ends_with(":java25"));
     Ok(())
 }
+
+// ------------------------------------------------------------ performance
+
+#[tokio::test]
+async fn the_view_distance_reaches_the_game_container_on_the_next_start() -> TestResult {
+    let h = harness();
+    let id = running_server(&h).await?;
+    // Nothing chosen yet: the game keeps its own default.
+    assert_eq!(h.svc.view_distance(&id)?, None);
+    assert_eq!(h.rt.spec_of(&id).map(|s| s.view_distance), Some(None));
+
+    h.svc.set_view_distance(&id, 7)?;
+    assert_eq!(h.svc.view_distance(&id)?, Some(7));
+    // A running server is not touched ...
+    assert_eq!(h.rt.spec_of(&id).map(|s| s.view_distance), Some(None));
+    // ... the next start picks it up.
+    h.svc.restart(&id).await?;
+    assert_eq!(h.rt.spec_of(&id).map(|s| s.view_distance), Some(Some(7)));
+
+    // Going back to the default sends the default: the game keeps what it
+    // last wrote, so leaving the variable out would not undo the change.
+    h.svc
+        .set_view_distance(&id, crate::settings::VIEW_DISTANCE_DEFAULT)?;
+    h.svc.restart(&id).await?;
+    assert_eq!(
+        h.rt.spec_of(&id).map(|s| s.view_distance),
+        Some(Some(crate::settings::VIEW_DISTANCE_DEFAULT))
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn an_out_of_range_view_distance_is_refused_and_changes_nothing() -> TestResult {
+    let h = harness();
+    let id = running_server(&h).await?;
+    h.svc.set_view_distance(&id, 6)?;
+    for bad in [0, 1, 3, 17, 32, 255] {
+        let err = h.svc.set_view_distance(&id, bad);
+        assert!(
+            matches!(err, Err(ServiceError::InvalidInput(_))),
+            "accepted {bad}"
+        );
+    }
+    assert_eq!(h.svc.view_distance(&id)?, Some(6));
+    assert!(matches!(
+        h.svc.set_view_distance("nope", 8),
+        Err(ServiceError::NotFound(_))
+    ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_view_distance_is_kept_outside_the_database_and_the_game_data() -> TestResult {
+    let h = harness();
+    let row = h.svc.create_server("Survival", "26.3", true).await?;
+    h.svc.set_view_distance(&row.id, 9)?;
+    let file = h.svc.server_dir(&row.id).join("settings.json");
+    assert!(file.is_file(), "settings.json missing");
+    assert!(!h.svc.data_dir(&row.id).join("settings.json").exists());
+    // The schema stays as the previous release knows it.
+    assert_eq!(h.svc.db().schema_version()?, 5);
+    // Deleting the server takes the setting with it.
+    h.svc.delete_server(&row.id).await?;
+    assert!(!file.exists());
+    Ok(())
+}
+
+#[tokio::test]
+async fn resources_report_the_game_the_machine_and_the_limits() -> TestResult {
+    let h = harness();
+    let row = h.svc.create_server("Survival", "26.3", true).await?;
+
+    // Stopped: no game numbers, but the limits it would get are known.
+    let stopped = h.svc.resources(&row.id).await?;
+    assert!(!stopped.running);
+    assert!(stopped.game.is_none());
+    assert!(stopped.memory_limit_bytes.is_some());
+    assert_eq!(stopped.disk.map(|d| d.total_bytes), Some(100));
+
+    h.svc.start(&row.id).await?;
+    // Running but podman has no reading yet.
+    let none = h.svc.resources(&row.id).await?;
+    assert!(none.running);
+    assert!(none.game.is_none());
+
+    h.rt.set_stats(
+        &row.id,
+        crate::runtime::ContainerStats {
+            mem_used_bytes: 2 * GIB,
+            cpu_time: Duration::from_secs(10),
+            pids: 55,
+        },
+    );
+    let first = h.svc.resources(&row.id).await?;
+    let game = first.game.expect("game reading");
+    assert_eq!(game.mem_used_bytes, 2 * GIB);
+    assert_eq!(game.pids, 55);
+    // One reading is not a rate.
+    assert_eq!(game.cpu_cores, None);
+    assert_eq!(first.pids_limit, h.svc.cfg.pids_limit);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_stopped_server_forgets_its_cpu_baseline() -> TestResult {
+    let h = harness();
+    let id = running_server(&h).await?;
+    h.rt.set_stats(
+        &id,
+        crate::runtime::ContainerStats {
+            mem_used_bytes: GIB,
+            cpu_time: Duration::from_secs(5),
+            pids: 10,
+        },
+    );
+    h.svc.resources(&id).await?;
+    assert!(h.svc.cpu_samples.lock().expect("lock").contains_key(&id));
+    h.svc.stop(&id).await?;
+    h.svc.resources(&id).await?;
+    assert!(!h.svc.cpu_samples.lock().expect("lock").contains_key(&id));
+    Ok(())
+}

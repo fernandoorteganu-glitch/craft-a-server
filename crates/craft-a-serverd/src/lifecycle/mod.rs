@@ -7,6 +7,7 @@
 
 mod backups;
 mod mods;
+mod performance;
 mod recovery;
 mod server;
 mod tunnel;
@@ -36,6 +37,7 @@ use crate::runtime::{ContainerRuntime, RuntimeError};
 use crate::tunnel::{TunnelError, TunnelManager};
 
 pub use backups::Reason;
+pub use performance::{GameUse, HostUse, Resources};
 pub use recovery::ReconcileReport;
 pub use server::{Console, player_name};
 
@@ -190,6 +192,7 @@ pub struct Service<R, P> {
     pub(crate) tunnel: Option<Arc<TunnelManager>>,
     locks: Mutex<HashMap<String, Arc<AsyncMutex<()>>>>,
     failures: Mutex<HashMap<String, u32>>,
+    cpu_samples: Mutex<HashMap<String, performance::CpuSample>>,
 }
 
 impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
@@ -204,6 +207,7 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
             tunnel: None,
             locks: Mutex::new(HashMap::new()),
             failures: Mutex::new(HashMap::new()),
+            cpu_samples: Mutex::new(HashMap::new()),
         }
     }
 

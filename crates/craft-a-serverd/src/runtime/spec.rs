@@ -34,6 +34,9 @@ pub struct ServerContainerSpec {
     pub eula_accepted: bool,
     /// RCON password: `[A-Za-z0-9]{16,128}`. Never put on a command line.
     pub rcon_password: String,
+    /// Chunks the server sends around each player (`VIEW_DISTANCE`); `None`
+    /// leaves the game's own default.
+    pub view_distance: Option<u8>,
 }
 
 impl fmt::Debug for ServerContainerSpec {
@@ -52,6 +55,7 @@ impl fmt::Debug for ServerContainerSpec {
             .field("gid", &self.gid)
             .field("stop_timeout_secs", &self.stop_timeout_secs)
             .field("eula_accepted", &self.eula_accepted)
+            .field("view_distance", &self.view_distance)
             .field("rcon_password", &"<redacted>")
             .finish()
     }
@@ -161,6 +165,12 @@ impl ServerContainerSpec {
         if self.stop_timeout_secs > 3600 {
             return Err(invalid("stop_timeout_secs must be <= 3600"));
         }
+        if self
+            .view_distance
+            .is_some_and(|v| !crate::settings::valid_view_distance(v))
+        {
+            return Err(invalid("view_distance is outside the allowed range"));
+        }
         Ok(())
     }
 }
@@ -224,6 +234,9 @@ pub fn build_run_args(spec: &ServerContainerSpec) -> Result<Vec<String>, Runtime
     push(&["-e", "ONLINE_MODE=TRUE"]);
     push(&["-e", "ENABLE_WHITELIST=TRUE"]);
     push(&["-e", "ENFORCE_WHITELIST=TRUE"]);
+    if let Some(v) = spec.view_distance {
+        push(&["-e", &format!("VIEW_DISTANCE={v}")]);
+    }
     push(&[&spec.image]);
     Ok(args)
 }
@@ -245,6 +258,7 @@ pub(crate) fn test_spec() -> ServerContainerSpec {
         stop_timeout_secs: 30,
         eula_accepted: true,
         rcon_password: "0123456789abcdef0123456789abcdef".into(),
+        view_distance: None,
     }
 }
 
@@ -304,6 +318,29 @@ mod tests {
             "docker.io/itzg/minecraft-server:java21",
         ]);
         assert_eq!(args, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn view_distance_reaches_the_container_only_when_set_and_in_range() -> Result<(), RuntimeError>
+    {
+        let mut spec = test_spec();
+        let none = build_run_args(&spec)?;
+        assert!(!none.iter().any(|a| a.starts_with("VIEW_DISTANCE")));
+
+        spec.view_distance = Some(8);
+        let args = build_run_args(&spec)?;
+        let at = args
+            .iter()
+            .position(|a| a == "VIEW_DISTANCE=8")
+            .ok_or_else(|| invalid("VIEW_DISTANCE missing"))?;
+        assert_eq!(args.get(at - 1).map(String::as_str), Some("-e"));
+        assert_eq!(args.len(), none.len() + 2);
+
+        for bad in [0, 1, 3, 17, 32, 255] {
+            spec.view_distance = Some(bad);
+            assert!(build_run_args(&spec).is_err(), "accepted {bad}");
+        }
         Ok(())
     }
 

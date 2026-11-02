@@ -9,8 +9,8 @@ use tokio::sync::mpsc;
 
 use super::spec::{ServerContainerSpec, build_pod_create_args, build_run_args, validate_id};
 use super::{
-    ContainerInfo, ContainerRuntime, ContainerState, LogReceiver, ManagedPod, RuntimeError,
-    container_name, pod_name, rcon_words,
+    ContainerInfo, ContainerRuntime, ContainerState, ContainerStats, LogReceiver, ManagedPod,
+    RuntimeError, container_name, pod_name, rcon_words,
 };
 
 /// Operation names, used to script failures and to describe recorded calls.
@@ -58,6 +58,7 @@ struct Inner {
     calls: Vec<RuntimeCall>,
     failures: HashMap<RuntimeOp, VecDeque<RuntimeError>>,
     rcon_replies: HashMap<String, String>,
+    stats: HashMap<String, ContainerStats>,
 }
 
 /// Cloneable handle; clones share state.
@@ -107,6 +108,16 @@ impl FakeRuntime {
             s.followers
                 .retain(|tx| tx.try_send(line.to_owned()).is_ok());
         }
+    }
+
+    /// Sets what `stats` reports for a running server.
+    pub fn set_stats(&self, id: &str, stats: ContainerStats) {
+        self.lock().stats.insert(id.to_owned(), stats);
+    }
+
+    /// The spec a server was created with (to check what reached the container).
+    pub fn spec_of(&self, id: &str) -> Option<ServerContainerSpec> {
+        self.lock().servers.get(id).map(|s| s.spec.clone())
     }
 
     /// Fixes the reply `rcon` returns for an exact command string.
@@ -303,6 +314,16 @@ impl ContainerRuntime for FakeRuntime {
                 container_name(id)
             ))),
         }
+    }
+
+    async fn stats(&self, id: &str) -> Result<Option<ContainerStats>, RuntimeError> {
+        // Not recorded in `calls`: the panel polls it and tests assert call sequences.
+        validate_id(id)?;
+        let g = self.lock();
+        Ok(match g.servers.get(id) {
+            Some(s) if s.state == ContainerState::Running => g.stats.get(id).copied(),
+            _ => None,
+        })
     }
 
     async fn list_managed(&self) -> Result<Vec<ManagedPod>, RuntimeError> {

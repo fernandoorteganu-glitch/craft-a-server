@@ -80,6 +80,7 @@ fn spec(
         stop_timeout_secs: 30,
         eula_accepted: true,
         rcon_password: format!("{nanos:032x}").chars().take(32).collect(),
+        view_distance: None,
     })
 }
 
@@ -192,7 +193,8 @@ async fn full_lifecycle_with_egress_containment() -> TestResult {
     let id = unique_id("life");
     let data = tempfile::tempdir()?;
     let port = 25_600 + u16::try_from(std::process::id() % 300)?;
-    let spec = spec(&id, data.path(), port)?;
+    let mut spec = spec(&id, data.path(), port)?;
+    spec.view_distance = Some(6);
 
     println!("podman version: {}", rt.version().await?);
     rt.remove(&id).await?;
@@ -246,6 +248,23 @@ async fn full_lifecycle_with_egress_containment() -> TestResult {
         let reply = rt.rcon(&id, "list").await?;
         assert!(reply.to_lowercase().contains("players"), "rcon: {reply}");
 
+        // The chosen view distance reached the game's own settings.
+        let props = std::fs::read_to_string(data.path().join("server.properties"))?;
+        assert!(
+            props.lines().any(|l| l.trim() == "view-distance=6"),
+            "server.properties: {props}"
+        );
+
+        // Resource readings come from podman and parse.
+        let reading = rt
+            .stats(&id)
+            .await?
+            .ok_or("no stats for a running server")?;
+        println!("stats: {reading:?}");
+        assert!(reading.mem_used_bytes > 50 * 1024 * 1024, "{reading:?}");
+        assert!(reading.pids > 1, "{reading:?}");
+        assert!(reading.cpu_time > Duration::ZERO, "{reading:?}");
+
         // Logs.
         assert!(!rt.logs_tail(&id, 20).await?.is_empty());
         let mut rx = rt.logs_follow(&id).await?;
@@ -265,6 +284,7 @@ async fn full_lifecycle_with_egress_containment() -> TestResult {
 
         // Stop, then remove (twice: idempotent).
         rt.stop(&id, Duration::from_secs(30)).await?;
+        assert_eq!(rt.stats(&id).await?, None, "no reading once it has stopped");
         assert_eq!(
             rt.inspect(&id).await?.state,
             ContainerState::Exited { code: 0 }

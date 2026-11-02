@@ -14,8 +14,8 @@ use tokio::sync::mpsc;
 use super::egress::{EGRESS_TABLE, EgressPolicy};
 use super::spec::{ServerContainerSpec, build_pod_create_args, build_run_args, validate_id};
 use super::{
-    ContainerInfo, ContainerRuntime, ContainerState, LABEL_ID, LogReceiver, ManagedPod,
-    RuntimeError, container_name, pod_name, rcon_words,
+    ContainerInfo, ContainerRuntime, ContainerState, ContainerStats, LABEL_ID, LogReceiver,
+    ManagedPod, RuntimeError, container_name, pod_name, rcon_words, stats,
 };
 
 /// Longest log line delivered; the rest of an over-long line is dropped.
@@ -678,6 +678,35 @@ impl ContainerRuntime for PodmanCli {
         args.extend(words);
         let out = self.run_ok("rcon", &args, self.timeouts.query).await?;
         Ok(truncate(&out.stdout, 64 * 1024))
+    }
+
+    async fn stats(&self, id: &str) -> Result<Option<ContainerStats>, RuntimeError> {
+        validate_id(id)?;
+        let args: Vec<String> = [
+            "stats",
+            "--no-stream",
+            "--format",
+            "json",
+            container_name(id).as_str(),
+        ]
+        .iter()
+        .map(|s| (*s).to_owned())
+        .collect();
+        let out = self
+            .exec("stats", &args, None, &[], self.timeouts.query)
+            .await?;
+        if !out.success() {
+            // A container that is not running is "no reading", not a fault.
+            return if is_no_such(&out.stderr) || out.stderr.contains("not running") {
+                Ok(None)
+            } else {
+                Err(failed("stats", &out))
+            };
+        }
+        let reading = stats::parse_stats(&out.stdout)?;
+        // A container that has stopped still answers, with all zeros; a running
+        // game always has at least one process.
+        Ok((reading.pids > 0).then_some(reading))
     }
 
     async fn list_managed(&self) -> Result<Vec<ManagedPod>, RuntimeError> {

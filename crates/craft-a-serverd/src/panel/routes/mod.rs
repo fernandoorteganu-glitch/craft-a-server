@@ -11,6 +11,7 @@ mod backups;
 mod mods;
 mod online;
 mod pair;
+mod performance;
 mod players;
 mod screens;
 mod server;
@@ -179,6 +180,21 @@ where
             "/mods/remove/{id}",
             Access::Session,
             get(mods::remove_confirm::<R, P>).post(mods::remove::<R, P>),
+        )
+        .add(
+            "/performance",
+            Access::Session,
+            get(performance::page::<R, P>),
+        )
+        .add(
+            "/partials/performance",
+            Access::Session,
+            get(performance::usage::<R, P>),
+        )
+        .add(
+            "/performance/view-distance",
+            Access::Session,
+            post(performance::set_view_distance::<R, P>),
         )
         .add("/online", Access::Session, get(online::page::<R, P>))
         .add(

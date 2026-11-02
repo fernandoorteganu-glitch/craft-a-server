@@ -1349,6 +1349,13 @@ const EXPECTED_ROUTES: &[(&str, Access, &[Method])] = &[
         Access::Session,
         &[Method::GET, Method::POST],
     ),
+    ("/performance", Access::Session, &[Method::GET]),
+    ("/partials/performance", Access::Session, &[Method::GET]),
+    (
+        "/performance/view-distance",
+        Access::Session,
+        &[Method::POST],
+    ),
     ("/online", Access::Session, &[Method::GET]),
     ("/partials/online", Access::Session, &[Method::GET]),
     (
@@ -1791,4 +1798,5 @@ async fn healthz_is_public_and_tiny() -> TestResult {
 }
 
 mod online;
+mod performance;
 mod screens;

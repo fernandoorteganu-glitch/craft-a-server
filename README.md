@@ -75,7 +75,7 @@ sudo craft-a-server pair
 
 If `craft-a-server.local` does not open on your phone (some Android versions), use the IP address shown, or set the machine name: `sudo hostnamectl set-hostname craft-a-server`. Lost the only paired phone? Run `sudo craft-a-server pair` on the machine itself (keyboard and screen, or your own SSH) and pair again; `sudo craft-a-server devices list` and `devices revoke <id>` sign phones out.
 
-From the panel you create the server (you accept the Minecraft EULA yourself), add friends to the whitelist, install mods from Modrinth, take and restore backups, and optionally turn on online play through playit.gg.
+From the panel you create the server (you accept the Minecraft EULA yourself), add friends to the whitelist, install mods from Modrinth, take and restore backups, see how much memory, processor and disk the server and the machine use right now (Performance), choose the view distance (4 to 16 chunks, applied at the next start), and optionally turn on online play through playit.gg.
 
 ## Safety notes
 
