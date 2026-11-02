@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 pub use crate::tunnel::TunnelInfo;
 
 /// Version reported by `ping`; the CLI warns when it differs from its own.
-pub const PROTOCOL_VERSION: u32 = 3;
+pub const PROTOCOL_VERSION: u32 = 4;
 
 /// Longest accepted request line, including the newline.
 pub const MAX_REQUEST_BYTES: usize = 64 * 1024;
@@ -144,6 +144,19 @@ pub enum Command {
     /// Compare installed mods with Modrinth (read only).
     ModsCheck {
         id: String,
+    },
+    /// What a server and the machine are using right now (read only).
+    Resources {
+        id: String,
+    },
+    /// The chosen view distance (read only).
+    ViewDistanceGet {
+        id: String,
+    },
+    /// Choose the view distance; it reaches the game at the next start.
+    ViewDistanceSet {
+        id: String,
+        value: u8,
     },
     /// State of the optional playit.gg tunnel ("online play").
     TunnelStatus {},
@@ -381,6 +394,61 @@ pub struct ModChangeInfo {
     pub backup_id: Option<String>,
 }
 
+/// What the game container uses.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GameUseInfo {
+    pub mem_used_bytes: u64,
+    /// Thousandths of a core in use; absent until the daemon has two readings.
+    pub cpu_millicores: Option<u32>,
+    pub pids: u32,
+}
+
+/// The whole machine.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HostUseInfo {
+    pub mem_total_bytes: u64,
+    pub mem_available_bytes: u64,
+    /// One-minute load average times 100.
+    pub load1_centis: u32,
+}
+
+/// Free and total space of the disk holding the servers.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiskInfo {
+    pub free_bytes: u64,
+    pub total_bytes: u64,
+}
+
+/// A snapshot of resource use for one server.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResourcesInfo {
+    pub running: bool,
+    /// Absent when the server is not running or podman gave no reading.
+    pub game: Option<GameUseInfo>,
+    /// What the game is allowed: container memory limit and Java heap.
+    pub memory_limit_bytes: Option<u64>,
+    pub heap_bytes: Option<u64>,
+    pub cpus: u32,
+    pub pids_limit: u32,
+    pub host: Option<HostUseInfo>,
+    pub disk: Option<DiskInfo>,
+}
+
+/// The view distance of a server and the limits it must stay within.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewDistanceInfo {
+    /// `None`: never chosen, so the game uses `default_value`.
+    pub value: Option<u8>,
+    pub default_value: u8,
+    pub min: u8,
+    pub max: u8,
+}
+
 /// What the daemon answers.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data", rename_all = "snake_case")]
@@ -416,6 +484,8 @@ pub enum Response {
     ModUpdates(Vec<ModUpdateInfo>),
     ModChange(ModChangeInfo),
     Tunnel(TunnelInfo),
+    Resources(ResourcesInfo),
+    ViewDistance(ViewDistanceInfo),
     Error {
         kind: ErrorKind,
         message: String,
@@ -550,6 +620,9 @@ mod tests {
             Command::TunnelStatus {},
             Command::TunnelEnable { confirm: true },
             Command::TunnelDisable { forget_claim: true },
+            Command::Resources { id: id() },
+            Command::ViewDistanceGet { id: id() },
+            Command::ViewDistanceSet { id: id(), value: 8 },
         ]
     }
 
@@ -718,6 +791,49 @@ mod tests {
                 agent_version: "1.2.0".into(),
                 local_port: 25565,
             }),
+            Response::Resources(ResourcesInfo {
+                running: true,
+                game: Some(GameUseInfo {
+                    mem_used_bytes: 2 << 30,
+                    cpu_millicores: Some(1500),
+                    pids: 70,
+                }),
+                memory_limit_bytes: Some(4 << 30),
+                heap_bytes: Some(3 << 30),
+                cpus: 4,
+                pids_limit: 512,
+                host: Some(HostUseInfo {
+                    mem_total_bytes: 8 << 30,
+                    mem_available_bytes: 3 << 30,
+                    load1_centis: 52,
+                }),
+                disk: Some(DiskInfo {
+                    free_bytes: 50,
+                    total_bytes: 100,
+                }),
+            }),
+            Response::Resources(ResourcesInfo {
+                running: false,
+                game: None,
+                memory_limit_bytes: None,
+                heap_bytes: None,
+                cpus: 1,
+                pids_limit: 512,
+                host: None,
+                disk: None,
+            }),
+            Response::ViewDistance(ViewDistanceInfo {
+                value: Some(8),
+                default_value: 10,
+                min: 4,
+                max: 16,
+            }),
+            Response::ViewDistance(ViewDistanceInfo {
+                value: None,
+                default_value: 10,
+                min: 4,
+                max: 16,
+            }),
             Response::Error {
                 kind: ErrorKind::WrongState,
                 message: "nope".into(),
@@ -730,6 +846,27 @@ mod tests {
             };
             assert_eq!(parse_reply(&encode_line(&reply))?, reply);
         }
+        Ok(())
+    }
+
+    #[test]
+    fn the_performance_commands_have_stable_wire_names() -> TestResult {
+        assert_eq!(
+            parse_request(r#"{"cmd":{"type":"view_distance_set","id":"s1","value":8}}"#)?.cmd,
+            Command::ViewDistanceSet {
+                id: "s1".into(),
+                value: 8
+            }
+        );
+        assert_eq!(
+            parse_request(r#"{"cmd":{"type":"resources","id":"s1"}}"#)?.cmd,
+            Command::Resources { id: "s1".into() }
+        );
+        // A value that does not fit a byte, or a stray field, is refused.
+        assert!(
+            parse_request(r#"{"cmd":{"type":"view_distance_set","id":"s1","value":300}}"#).is_err()
+        );
+        assert!(parse_request(r#"{"cmd":{"type":"resources","id":"s1","x":1}}"#).is_err());
         Ok(())
     }
 

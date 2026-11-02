@@ -42,6 +42,9 @@ fn server_ref_mut(cmd: &mut Command) -> Option<&mut String> {
         | Command::Reset { id }
         | Command::Delete { id }
         | Command::Status { id }
+        | Command::Resources { id }
+        | Command::ViewDistanceGet { id }
+        | Command::ViewDistanceSet { id, .. }
         | Command::BackupCreate { id }
         | Command::BackupList { id }
         | Command::BackupRestore { id, .. }

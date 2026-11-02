@@ -70,6 +70,9 @@ fn run(cli: &Cli) -> u8 {
     {
         return logs_follow(cli, &mut client, id);
     }
+    if let Cmd::Resources { .. } = &cli.command {
+        return resources(cli, &mut client);
+    }
     if let Cmd::Mods { action } = &cli.command
         && let Some(plan) = args::plan_command(action)
     {
@@ -79,6 +82,29 @@ fn run(cli: &Cli) -> u8 {
         Ok(reply) => finish(cli, &reply),
         Err(e) => connection_failed(cli, &e),
     }
+}
+
+/// The processor figure is a rate between two readings, so a first reading
+/// alone has none; take a second one a moment later instead of printing
+/// "measuring" to a person who just asked.
+fn resources(cli: &Cli, client: &mut Client) -> u8 {
+    let mut reply = match client.request(cli.command.to_command()) {
+        Ok(r) => r,
+        Err(e) => return connection_failed(cli, &e),
+    };
+    let needs_second = matches!(
+        &reply.response,
+        Response::Resources(info)
+            if info.game.as_ref().is_some_and(|g| g.cpu_millicores.is_none())
+    );
+    if needs_second {
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        reply = match client.request(cli.command.to_command()) {
+            Ok(r) => r,
+            Err(e) => return connection_failed(cli, &e),
+        };
+    }
+    finish(cli, &reply)
 }
 
 /// Asks on the terminal; anything but yes (including end of input) is a no.
@@ -183,6 +209,11 @@ fn render_response(cmd: &Cmd, response: &Response) -> String {
             Response::Tunnel(info),
         ) => render::render_claim_url(info),
         (_, Response::Tunnel(info)) => render::render_tunnel(info),
+        (_, Response::Resources(info)) => render::render_resources(info),
+        (cmd, Response::ViewDistance(info)) => render::render_view_distance(
+            info,
+            matches!(cmd, Cmd::ViewDistance { value: Some(_), .. }),
+        ),
         (_, Response::Diagnose(d)) => render::render_diagnose(d, CLI_VERSION, PROTOCOL_VERSION),
         (_, Response::Ok) => "Done.".to_owned(),
         (_, Response::Error { message, .. }) => render::sanitize(message),

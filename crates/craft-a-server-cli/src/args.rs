@@ -76,6 +76,18 @@ pub enum Cmd {
     Delete { id: String },
     /// Show one server, or all of them without an id.
     Status { id: Option<String> },
+    /// Show what a server and this machine are using right now: memory,
+    /// processor, processes and disk.
+    Resources { id: String },
+    /// Show or choose how many chunks around each player the server sends.
+    /// Takes effect the next time the server starts.
+    ViewDistance {
+        id: String,
+        /// Chunks, from 4 to 16 (the game's own default is 10). Leave out to
+        /// show the current value.
+        #[arg(value_parser = clap::value_parser!(u8).range(4..=16))]
+        value: Option<u8>,
+    },
     /// Show a server's log.
     Logs {
         id: String,
@@ -235,6 +247,15 @@ impl Cmd {
             Cmd::Reset { id } => Command::Reset { id: id.clone() },
             Cmd::Delete { id } => Command::Delete { id: id.clone() },
             Cmd::Status { id: Some(id) } => Command::Status { id: id.clone() },
+            Cmd::Resources { id } => Command::Resources { id: id.clone() },
+            Cmd::ViewDistance { id, value: None } => Command::ViewDistanceGet { id: id.clone() },
+            Cmd::ViewDistance {
+                id,
+                value: Some(value),
+            } => Command::ViewDistanceSet {
+                id: id.clone(),
+                value: *value,
+            },
             Cmd::Logs {
                 id,
                 lines,
@@ -410,6 +431,20 @@ mod tests {
     }
 
     #[test]
+    fn view_distance_is_checked_before_anything_is_sent() -> TestResult {
+        for bad in ["0", "3", "17", "300", "-1", "many"] {
+            assert!(
+                parse(&["view-distance", "s1", bad]).is_err(),
+                "accepted {bad}"
+            );
+        }
+        for ok in ["4", "10", "16"] {
+            assert!(parse(&["view-distance", "s1", ok]).is_ok(), "refused {ok}");
+        }
+        Ok(())
+    }
+
+    #[test]
     fn defaults() -> TestResult {
         let cli = parse(&["list"])?;
         assert!(!cli.json && !cli.yes);
@@ -482,6 +517,15 @@ mod tests {
             (vec!["delete", "s1"], Command::Delete { id: id() }),
             (vec!["status"], Command::List {}),
             (vec!["status", "s1"], Command::Status { id: id() }),
+            (vec!["resources", "s1"], Command::Resources { id: id() }),
+            (
+                vec!["view-distance", "s1"],
+                Command::ViewDistanceGet { id: id() },
+            ),
+            (
+                vec!["view-distance", "s1", "8"],
+                Command::ViewDistanceSet { id: id(), value: 8 },
+            ),
             (vec!["diagnose"], Command::Diagnose {}),
             (vec!["pair"], Command::Pair {}),
             (vec!["devices", "list"], Command::DevicesList {}),

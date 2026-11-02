@@ -15,13 +15,9 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-/// Fewest chunks the panel offers; below this the world looks broken.
-pub const VIEW_DISTANCE_MIN: u8 = 4;
-/// Most chunks the panel offers. The game allows 32, but every step costs a
-/// lot of memory and CPU, which is what a small PC cannot spare.
-pub const VIEW_DISTANCE_MAX: u8 = 16;
-/// What the game uses when nothing is set.
-pub const VIEW_DISTANCE_DEFAULT: u8 = 10;
+pub use craft_a_server_core::settings::{
+    VIEW_DISTANCE_DEFAULT, VIEW_DISTANCE_MAX, VIEW_DISTANCE_MIN, valid_view_distance,
+};
 
 const FILE_NAME: &str = "settings.json";
 
@@ -30,11 +26,6 @@ pub struct ServerSettings {
     /// `None` keeps the game's default.
     #[serde(default)]
     pub view_distance: Option<u8>,
-}
-
-/// Whether `v` is in the offered range.
-pub fn valid_view_distance(v: u8) -> bool {
-    (VIEW_DISTANCE_MIN..=VIEW_DISTANCE_MAX).contains(&v)
 }
 
 fn path(server_dir: &Path) -> PathBuf {
@@ -136,14 +127,5 @@ mod tests {
         )?;
         assert_eq!(load(dir.path()).view_distance, Some(6));
         Ok(())
-    }
-
-    #[test]
-    fn the_range_matches_what_the_panel_offers() {
-        assert!(valid_view_distance(VIEW_DISTANCE_MIN));
-        assert!(valid_view_distance(VIEW_DISTANCE_MAX));
-        assert!(valid_view_distance(VIEW_DISTANCE_DEFAULT));
-        assert!(!valid_view_distance(VIEW_DISTANCE_MIN - 1));
-        assert!(!valid_view_distance(VIEW_DISTANCE_MAX + 1));
     }
 }

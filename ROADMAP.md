@@ -391,6 +391,7 @@ Known limits: see `docs/security-review.md` section 3. The most important: singl
 | 2026-11-02 | Download redirects followed manually, only to GitHub asset hosts, max 3, https only | Let the HTTP client follow | Pinned-host rule must hold across hops |
 | 2026-11-02 | DB migration v5: add-only `tunnel` table, single row | Store in config file | Matches existing state storage; pre-migration copy kept |
 | 2026-11-02 | ctl protocol version 3 (tunnel commands, `tunnel` error kind, `forget_claim` on disable) | Keep 2 | Old CLIs must not talk to a daemon with commands they cannot parse |
+| 2026-11-02 | ctl protocol version 4 (`resources`, `view-distance` commands; the CLI refuses to talk to a daemon of another version) | Keep 3 | Old CLIs must not talk to a daemon with commands they cannot parse |
 | 2026-11-02 | Tunnel OFF by default; enabling requires an explicit confirm that lists what playit.gg receives (CLI `--yes` skips only the prompt) | Auto-enable | Third-party data flow needs informed consent |
 | 2026-11-02 | Panel "Online" screen and nav entry; home card shows the address when Running | Settings subsection | One place for the claim link, address and unlink |
 | 2026-11-02 | Backoff resets only after the agent stays up `healthy_after`; failure cause tracked | Reset on every start | Avoids a fast crash loop looking healthy |

@@ -7,6 +7,7 @@ pub mod image;
 pub mod mc_protocol;
 pub mod memory;
 pub mod model;
+pub mod settings;
 pub mod tunnel;
 
 pub use error::Error;

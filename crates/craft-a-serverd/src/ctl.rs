@@ -15,10 +15,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use craft_a_server_core::ctl::{
-    BackupInfo, Command, ConsoleAction, DeviceInfo, DiagnoseInfo, ErrorKind, EventInfo,
-    MAX_REQUEST_BYTES, PROTOCOL_VERSION, ProtocolError, Reply, Request, Response, ServerInfo,
-    encode_line, parse_request,
+    BackupInfo, Command, ConsoleAction, DeviceInfo, DiagnoseInfo, DiskInfo, ErrorKind, EventInfo,
+    GameUseInfo, HostUseInfo, MAX_REQUEST_BYTES, PROTOCOL_VERSION, ProtocolError, Reply, Request,
+    ResourcesInfo, Response, ServerInfo, ViewDistanceInfo, encode_line, parse_request,
 };
+use craft_a_server_core::settings::{VIEW_DISTANCE_DEFAULT, VIEW_DISTANCE_MAX, VIEW_DISTANCE_MIN};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::unix::OwnedWriteHalf;
 use tokio::net::{UnixListener, UnixStream};
@@ -26,7 +27,7 @@ use tokio::sync::{Semaphore, watch};
 use tokio::task::JoinSet;
 
 use crate::db::{BackupRow, ServerRow};
-use crate::lifecycle::{Console, Reason, Service, ServiceError, StatusProbe};
+use crate::lifecycle::{Console, Reason, Resources, Service, ServiceError, StatusProbe};
 use crate::runtime::{ContainerRuntime, RuntimeError};
 use crate::tunnel::TunnelError;
 
@@ -401,6 +402,48 @@ fn server_info(row: &ServerRow) -> ServerInfo {
     }
 }
 
+/// Thousandths of a core, rounded; a nonsense reading becomes zero.
+fn millicores(cores: f64) -> u32 {
+    if cores.is_finite() && cores > 0.0 {
+        (cores * 1000.0).round().min(f64::from(u32::MAX)) as u32
+    } else {
+        0
+    }
+}
+
+fn resources_info(r: &Resources) -> ResourcesInfo {
+    ResourcesInfo {
+        running: r.running,
+        game: r.game.map(|g| GameUseInfo {
+            mem_used_bytes: g.mem_used_bytes,
+            cpu_millicores: g.cpu_cores.map(millicores),
+            pids: g.pids,
+        }),
+        memory_limit_bytes: r.memory_limit_bytes,
+        heap_bytes: r.heap_bytes,
+        cpus: r.cpus,
+        pids_limit: r.pids_limit,
+        host: r.host.map(|h| HostUseInfo {
+            mem_total_bytes: h.mem_total_bytes,
+            mem_available_bytes: h.mem_available_bytes,
+            load1_centis: millicores(h.load1) / 10,
+        }),
+        disk: r.disk.map(|d| DiskInfo {
+            free_bytes: d.free_bytes,
+            total_bytes: d.total_bytes,
+        }),
+    }
+}
+
+fn view_distance_info(value: Option<u8>) -> ViewDistanceInfo {
+    ViewDistanceInfo {
+        value,
+        default_value: VIEW_DISTANCE_DEFAULT,
+        min: VIEW_DISTANCE_MIN,
+        max: VIEW_DISTANCE_MAX,
+    }
+}
+
 fn backup_info(row: &BackupRow) -> BackupInfo {
     BackupInfo {
         id: row.id.clone(),
@@ -548,6 +591,16 @@ where
                 .await?,
         ),
         Command::ModsCheck { id } => Response::ModUpdates(svc.mods_check(&id).await?),
+        Command::Resources { id } => {
+            Response::Resources(resources_info(&svc.resources(&id).await?))
+        }
+        Command::ViewDistanceGet { id } => {
+            Response::ViewDistance(view_distance_info(svc.view_distance(&id)?))
+        }
+        Command::ViewDistanceSet { id, value } => {
+            svc.set_view_distance(&id, value)?;
+            Response::ViewDistance(view_distance_info(svc.view_distance(&id)?))
+        }
         Command::TunnelStatus {} => Response::Tunnel(svc.tunnel_info()?),
         Command::TunnelEnable { confirm } => Response::Tunnel(svc.tunnel_enable(confirm)?),
         Command::TunnelDisable { forget_claim } => {
@@ -1190,6 +1243,89 @@ mod tests {
         assert_eq!(d.servers.len(), 1);
         assert!(!d.events.is_empty());
         assert!(!serde_json::to_string(&reply)?.contains(&password));
+        fx.shutdown().await
+    }
+
+    #[tokio::test]
+    async fn performance_commands_over_the_socket() -> TestResult {
+        let mut fx = Fixture::new()?;
+        fx.serve().await?;
+        let mut c = fx.client().await?;
+
+        let r = c.call(1, Command::Resources { id: "nope".into() }).await?;
+        assert_eq!(kind_of(&r), Some(ErrorKind::NotFound));
+        let r = c
+            .call(2, Command::ViewDistanceGet { id: "nope".into() })
+            .await?;
+        assert_eq!(kind_of(&r), Some(ErrorKind::NotFound));
+
+        let Response::Server(s) = c
+            .call(
+                3,
+                Command::Create {
+                    name: "a".into(),
+                    mc_version: "26.3".into(),
+                    eula_accepted: true,
+                },
+            )
+            .await?
+        else {
+            return Err("expected a server".into());
+        };
+
+        // Nothing chosen yet: the limits come with the answer.
+        let Response::ViewDistance(v) = c
+            .call(4, Command::ViewDistanceGet { id: s.id.clone() })
+            .await?
+        else {
+            return Err("expected a view distance".into());
+        };
+        assert_eq!((v.value, v.default_value, v.min, v.max), (None, 10, 4, 16));
+
+        let Response::ViewDistance(v) = c
+            .call(
+                5,
+                Command::ViewDistanceSet {
+                    id: s.id.clone(),
+                    value: 8,
+                },
+            )
+            .await?
+        else {
+            return Err("expected a view distance".into());
+        };
+        assert_eq!(v.value, Some(8));
+
+        // Out of range is refused and the value stays.
+        for bad in [0, 3, 17, 255] {
+            let r = c
+                .call(
+                    6,
+                    Command::ViewDistanceSet {
+                        id: s.id.clone(),
+                        value: bad,
+                    },
+                )
+                .await?;
+            assert_eq!(kind_of(&r), Some(ErrorKind::InvalidInput), "{bad}");
+        }
+        let Response::ViewDistance(v) = c
+            .call(7, Command::ViewDistanceGet { id: s.id.clone() })
+            .await?
+        else {
+            return Err("expected a view distance".into());
+        };
+        assert_eq!(v.value, Some(8));
+
+        // A stopped server: limits known, nothing in use, and no secret leaks.
+        let reply = c.call(8, Command::Resources { id: s.id.clone() }).await?;
+        let Response::Resources(info) = &reply else {
+            return Err("expected resources".into());
+        };
+        assert!(!info.running);
+        assert!(info.game.is_none());
+        assert!(info.memory_limit_bytes.is_some());
+        assert_eq!(info.disk.as_ref().map(|d| d.total_bytes), Some(100));
         fx.shutdown().await
     }
 

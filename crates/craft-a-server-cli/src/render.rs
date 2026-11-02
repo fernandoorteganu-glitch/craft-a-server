@@ -2,7 +2,8 @@
 
 use craft_a_server_core::ctl::{
     BackupInfo, DeviceInfo, DiagnoseInfo, EventInfo, ModChangeInfo, ModHitInfo, ModInstallPlanInfo,
-    ModLineInfo, ModListInfo, ModRemovePlanInfo, ModUpdateInfo, ServerInfo,
+    ModLineInfo, ModListInfo, ModRemovePlanInfo, ModUpdateInfo, ResourcesInfo, ServerInfo,
+    ViewDistanceInfo,
 };
 use craft_a_server_core::tunnel::{TunnelInfo, TunnelState};
 
@@ -217,6 +218,93 @@ fn civil_from_days(days: i64) -> (i64, i64, i64) {
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
     let y = yoe + era * 400 + i64::from(m <= 2);
     (y, m, d)
+}
+
+/// What a server and the machine are using, as plain lines.
+pub fn render_resources(info: &ResourcesInfo) -> String {
+    let mut out = String::new();
+    if !info.running {
+        out.push_str("The server is not running, so the game uses nothing yet.");
+    }
+    if let Some(g) = &info.game {
+        out.push_str("The game:\n");
+        let memory = match info.memory_limit_bytes {
+            Some(limit) => format!(
+                "{} of {}",
+                format_size(g.mem_used_bytes),
+                format_size(limit)
+            ),
+            None => format_size(g.mem_used_bytes),
+        };
+        out.push_str(&format!("  Memory      {memory}"));
+        if let Some(heap) = info.heap_bytes {
+            out.push_str(&format!(" (Java heap {})", format_size(heap)));
+        }
+        let cpu = match g.cpu_millicores {
+            Some(m) => {
+                let cpus = info.cpus.max(1);
+                let cores = f64::from(m) / 1000.0;
+                let share = (cores / f64::from(cpus) * 100.0).clamp(0.0, 100.0);
+                let unit = if cpus == 1 { "core" } else { "cores" };
+                format!("{share:.0}% ({cores:.1} of {cpus} {unit})")
+            }
+            None => "measuring, ask again in a few seconds".to_owned(),
+        };
+        out.push_str(&format!("\n  Processor   {cpu}"));
+        out.push_str(&format!(
+            "\n  Processes   {} (limit {})",
+            g.pids, info.pids_limit
+        ));
+    } else if info.running {
+        out.push_str("No reading from the game yet; try again in a moment.");
+    }
+    if let Some(h) = &info.host {
+        if !out.is_empty() {
+            out.push_str("\n\n");
+        }
+        let used = h.mem_total_bytes.saturating_sub(h.mem_available_bytes);
+        out.push_str(&format!(
+            "This machine:\n  Memory      {} of {} in use\n  Load        {}.{:02} (last minute)",
+            format_size(used),
+            format_size(h.mem_total_bytes),
+            h.load1_centis / 100,
+            h.load1_centis % 100
+        ));
+        if let Some(d) = &info.disk {
+            out.push_str(&format!(
+                "\n  Free disk   {} of {}",
+                format_size(d.free_bytes),
+                format_size(d.total_bytes)
+            ));
+        }
+    }
+    if out.is_empty() {
+        out.push_str("No readings available.");
+    }
+    out
+}
+
+/// The view distance; `just_set` adds the reminder that it needs a restart.
+pub fn render_view_distance(info: &ViewDistanceInfo, just_set: bool) -> String {
+    let shown = info.value.unwrap_or(info.default_value);
+    let mut out = match info.value {
+        Some(v) if v == info.default_value => {
+            format!("View distance: {v} chunks (the game's default).")
+        }
+        Some(v) => format!("View distance: {v} chunks."),
+        None => format!("View distance: {shown} chunks (the game's default; nothing chosen yet)."),
+    };
+    if just_set {
+        out.push_str(
+            "\nIt takes effect the next time the server starts: craft-a-server restart <server>",
+        );
+    } else {
+        out.push_str(&format!(
+            "\nChoose from {} to {} with: craft-a-server view-distance <server> <chunks>",
+            info.min, info.max
+        ));
+    }
+    out
 }
 
 /// `1.5 MiB`, `312 B`.
@@ -663,6 +751,88 @@ mod tests {
         assert!(out.contains("starting -> running"));
         assert!(!out.contains("WARNING"));
         assert!(render_diagnose(&d, "0.0.1", 2).contains("WARNING"));
+    }
+
+    fn resources() -> ResourcesInfo {
+        use craft_a_server_core::ctl::{DiskInfo, GameUseInfo, HostUseInfo};
+        ResourcesInfo {
+            running: true,
+            game: Some(GameUseInfo {
+                mem_used_bytes: 2 << 30,
+                cpu_millicores: Some(500),
+                pids: 70,
+            }),
+            memory_limit_bytes: Some(4 << 30),
+            heap_bytes: Some(3 << 30),
+            cpus: 2,
+            pids_limit: 512,
+            host: Some(HostUseInfo {
+                mem_total_bytes: 8 << 30,
+                mem_available_bytes: 3 << 30,
+                load1_centis: 52,
+            }),
+            disk: Some(DiskInfo {
+                free_bytes: 50 << 30,
+                total_bytes: 100 << 30,
+            }),
+        }
+    }
+
+    #[test]
+    fn resources_report_lists_game_and_machine() {
+        let out = render_resources(&resources());
+        assert!(
+            out.contains("Memory      2.0 GiB of 4.0 GiB (Java heap 3.0 GiB)"),
+            "{out}"
+        );
+        assert!(out.contains("Processor   25% (0.5 of 2 cores)"), "{out}");
+        assert!(out.contains("Processes   70 (limit 512)"), "{out}");
+        assert!(
+            out.contains("Memory      5.0 GiB of 8.0 GiB in use"),
+            "{out}"
+        );
+        assert!(out.contains("Load        0.52 (last minute)"), "{out}");
+        assert!(out.contains("Free disk   50.0 GiB of 100.0 GiB"), "{out}");
+    }
+
+    #[test]
+    fn resources_report_without_a_rate_or_a_running_server() {
+        let mut first = resources();
+        if let Some(g) = first.game.as_mut() {
+            g.cpu_millicores = None;
+        }
+        assert!(render_resources(&first).contains("measuring"));
+
+        let mut stopped = resources();
+        stopped.running = false;
+        stopped.game = None;
+        let out = render_resources(&stopped);
+        assert!(out.starts_with("The server is not running"), "{out}");
+        assert!(out.contains("This machine:"));
+
+        let nothing = ResourcesInfo {
+            host: None,
+            disk: None,
+            ..stopped
+        };
+        assert!(render_resources(&nothing).contains("not running"));
+    }
+
+    #[test]
+    fn view_distance_report() {
+        let info = |value| ViewDistanceInfo {
+            value,
+            default_value: 10,
+            min: 4,
+            max: 16,
+        };
+        assert!(render_view_distance(&info(None), false).contains("10 chunks (the game's default"));
+        let set = render_view_distance(&info(Some(6)), true);
+        assert!(set.starts_with("View distance: 6 chunks."), "{set}");
+        assert!(set.contains("next time the server starts"), "{set}");
+        let shown = render_view_distance(&info(Some(10)), false);
+        assert!(shown.contains("the game's default"), "{shown}");
+        assert!(shown.contains("from 4 to 16"), "{shown}");
     }
 
     #[test]
