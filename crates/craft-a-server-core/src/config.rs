@@ -77,6 +77,9 @@ pub struct Config {
     pub pairing_code_ttl_secs: u64,
     /// How long a paired phone stays signed in without being used.
     pub session_ttl_secs: u64,
+    /// Contact (email or URL) sent in the `User-Agent` to Modrinth, as their
+    /// API rules ask for an identifiable client. Optional.
+    pub modrinth_contact: Option<String>,
 }
 
 impl Default for Config {
@@ -101,6 +104,7 @@ impl Default for Config {
             panel_hostname: DEFAULT_PANEL_HOSTNAME.into(),
             pairing_code_ttl_secs: 600,
             session_ttl_secs: 30 * 24 * 3600,
+            modrinth_contact: None,
         }
     }
 }
@@ -156,6 +160,11 @@ impl Config {
         }
         if !(3_600..=365 * 24 * 3600).contains(&self.session_ttl_secs) {
             return bad("session_ttl_secs must be between 3600 and 31536000");
+        }
+        if let Some(contact) = &self.modrinth_contact
+            && (contact.len() > 100 || !contact.bytes().all(|b| (0x20..0x7f).contains(&b)))
+        {
+            return bad("modrinth_contact must be at most 100 printable ASCII characters");
         }
         if self.image.is_empty() || self.image.chars().any(char::is_whitespace) {
             return bad("image must be a non-empty reference without spaces");
@@ -229,6 +238,8 @@ mod tests {
             "pairing_code_ttl_secs = 5",
             "pairing_code_ttl_secs = 100000",
             "session_ttl_secs = 60",
+            "modrinth_contact = \"a\\nb\"",
+            "modrinth_contact = \"caf\u{e9}\"",
         ] {
             assert!(
                 matches!(Config::from_toml(doc), Err(ConfigError::Invalid(_))),
@@ -255,6 +266,15 @@ session_ttl_secs = 86400
         )?;
         assert_eq!((c.panel_port, c.panel_bind.as_str()), (18080, "::"));
         assert_eq!(c.panel_hostname, "mc.home");
+        Ok(())
+    }
+
+    #[test]
+    fn modrinth_contact_is_optional_and_validated() -> Result<(), ConfigError> {
+        assert_eq!(Config::default().modrinth_contact, None);
+        let c = Config::from_toml("modrinth_contact = \"me@example.com\"\n")?;
+        assert_eq!(c.modrinth_contact.as_deref(), Some("me@example.com"));
+        assert!(Config::from_toml(&format!("modrinth_contact = \"{}\"", "a".repeat(101))).is_err());
         Ok(())
     }
 

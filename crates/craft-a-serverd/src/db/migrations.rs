@@ -58,4 +58,29 @@ pub const MIGRATIONS: &[&str] = &[
         expires_unix   INTEGER NOT NULL
     );
     "#,
+    // v4: mods installed from Modrinth, and which of them need which. Only
+    // adds tables, so the previous release still opens the file.
+    r#"
+    CREATE TABLE mods (
+        server_id      TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+        project_id     TEXT NOT NULL,
+        version_id     TEXT NOT NULL,
+        title          TEXT NOT NULL,
+        version_number TEXT NOT NULL,
+        file_name      TEXT NOT NULL,
+        sha512         TEXT NOT NULL,
+        size_bytes     INTEGER NOT NULL,
+        as_dependency  INTEGER NOT NULL,
+        installed_unix INTEGER NOT NULL,
+        PRIMARY KEY (server_id, project_id)
+    );
+    CREATE TABLE mod_requires (
+        server_id           TEXT NOT NULL,
+        project_id          TEXT NOT NULL,
+        requires_project_id TEXT NOT NULL,
+        PRIMARY KEY (server_id, project_id, requires_project_id),
+        FOREIGN KEY (server_id, project_id)
+            REFERENCES mods(server_id, project_id) ON DELETE CASCADE
+    );
+    "#,
 ];

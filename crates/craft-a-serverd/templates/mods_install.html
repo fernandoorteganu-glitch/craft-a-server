@@ -1,0 +1,38 @@
+{% import "macros.html" as m %}
+<section class="card">
+<h1>{{ title }}</h1>
+{% if !plan.conflicts.is_empty() %}
+<p class="alert" role="alert">{{ crate::panel::strings::MODS_CANNOT }}</p>
+<ul>{% for c in plan.conflicts %}<li>{{ c }}</li>{% endfor %}</ul>
+{% endif %}
+<p><strong>{{ plan.target.title }}</strong> {{ plan.target.version_number }} <span class="tag">{{ plan.target.version_type }}</span> <span class="note">{{ size }}</span></p>
+{% if let Some(old) = plan.replaces %}<p class="note">{{ crate::panel::strings::MODS_REPLACES }} {{ old }}</p>{% endif %}
+{% if !plan.dependencies.is_empty() %}
+<h2>{{ crate::panel::strings::MODS_ALSO_INSTALLED }}</h2>
+<ul class="list">
+{% for d in plan.dependencies %}<li class="row"><div class="grow"><strong>{{ d.title }}</strong> {{ d.version_number }} <span class="tag">{{ d.version_type }}</span></div></li>{% endfor %}
+</ul>
+{% endif %}
+{% if !plan.already_installed.is_empty() %}
+<p class="note">{{ crate::panel::strings::MODS_ALREADY }} {{ already }}</p>
+{% endif %}
+{% if !plan.optional.is_empty() %}
+<p class="note">{{ crate::panel::strings::MODS_OPTIONAL }} {{ optional }}</p>
+{% endif %}
+{% if plan.server_running %}
+<p class="alert" role="alert">{{ crate::panel::strings::MODS_RESTART_WARNING }}</p>
+{% else %}
+<p class="note">{{ crate::panel::strings::MODS_STOPPED_NOTE }}</p>
+{% endif %}
+<div class="actions">
+{% if plan.conflicts.is_empty() %}
+<form method="post" action="{{ action }}">
+{{ m::csrf_field(csrf_token) }}
+<input type="hidden" name="confirm" value="yes">
+{% if prerelease %}<input type="hidden" name="pre" value="1">{% endif %}
+<button type="submit" class="btn">{{ crate::panel::strings::MODS_INSTALL_CONFIRM }}</button>
+</form>
+{% endif %}
+<a class="btn btn-secondary" href="/mods">{{ crate::panel::strings::CANCEL }}</a>
+</div>
+</section>

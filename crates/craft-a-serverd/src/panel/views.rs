@@ -187,9 +187,126 @@ pub struct LogsTail {
     pub lines: Vec<String>,
 }
 
+#[derive(Debug)]
+pub struct ModHitView {
+    pub project_id: String,
+    pub title: String,
+    pub description: String,
+    pub author: String,
+    pub downloads: String,
+    pub side_label: &'static str,
+    pub installed: bool,
+}
+
+impl ModHitView {
+    pub fn new(h: &craft_a_server_core::ctl::ModHitInfo) -> ModHitView {
+        ModHitView {
+            project_id: h.project_id.clone(),
+            title: h.title.clone(),
+            description: h.description.clone(),
+            author: h.author.clone(),
+            downloads: format!("{} downloads", format_count(h.downloads)),
+            side_label: match h.server_side.as_str() {
+                "required" => s::MODS_SIDE_REQUIRED,
+                "optional" => s::MODS_SIDE_OPTIONAL,
+                _ => s::MODS_SIDE_UNKNOWN,
+            },
+            installed: h.installed,
+        }
+    }
+}
+
+/// `1.2M`, `34k`, `567`.
+pub fn format_count(n: u64) -> String {
+    if n >= 1_000_000 {
+        format!("{}.{}M", n / 1_000_000, n % 1_000_000 / 100_000)
+    } else if n >= 1_000 {
+        format!("{}k", n / 1_000)
+    } else {
+        n.to_string()
+    }
+}
+
+/// The Mods screen: search box, results and the installed list.
 #[derive(Template, Debug)]
 #[template(path = "mods.html")]
-pub struct ModsBody;
+pub struct ModsBody<'a> {
+    pub has_server: bool,
+    pub busy: bool,
+    pub query: &'a str,
+    pub include_unknown: bool,
+    /// `None` before any search.
+    pub results: Option<Vec<ModHitView>>,
+    pub search_error: Option<String>,
+    pub list: &'a str,
+}
+
+#[derive(Debug)]
+pub struct InstalledView {
+    pub project_id: String,
+    pub title: String,
+    pub version: String,
+    pub dependency: bool,
+    pub status: Option<&'static str>,
+    pub required_by: String,
+}
+
+impl InstalledView {
+    pub fn new(m: &craft_a_server_core::ctl::InstalledModInfo) -> InstalledView {
+        InstalledView {
+            project_id: m.project_id.clone(),
+            title: m.title.clone(),
+            version: m.version_number.clone(),
+            dependency: m.as_dependency,
+            status: match m.status.as_str() {
+                "missing" => Some(s::MODS_STATUS_MISSING),
+                "size_changed" => Some(s::MODS_STATUS_CHANGED),
+                _ => None,
+            },
+            required_by: m.required_by.join(", "),
+        }
+    }
+}
+
+/// The installed list with the busy/result banner (also the htmx poll target).
+#[derive(Template, Debug)]
+#[template(path = "mods_list.html")]
+pub struct ModsList {
+    pub mods: Vec<InstalledView>,
+    pub untracked: Vec<String>,
+    pub banner: Banner,
+}
+
+#[derive(Template, Debug)]
+#[template(path = "mods_install.html")]
+pub struct ModInstallBody<'a> {
+    pub title: &'a str,
+    pub plan: craft_a_server_core::ctl::ModInstallPlanInfo,
+    pub size: String,
+    pub already: String,
+    pub optional: String,
+    pub action: String,
+    pub prerelease: bool,
+    pub csrf_token: &'a str,
+}
+
+#[derive(Template, Debug)]
+#[template(path = "mods_remove.html")]
+pub struct ModRemoveBody<'a> {
+    pub plan: craft_a_server_core::ctl::ModRemovePlanInfo,
+    pub dependents: String,
+    pub orphans: String,
+    pub action: String,
+    pub csrf_token: &'a str,
+}
+
+#[derive(Template, Debug)]
+#[template(path = "mods_updates.html")]
+pub struct ModUpdatesBody {
+    pub updates: Vec<craft_a_server_core::ctl::ModUpdateInfo>,
+    pub error: Option<String>,
+    pub busy: bool,
+}
 
 /// One row of the devices list.
 #[derive(Debug)]
@@ -420,6 +537,13 @@ mod tests {
         for banned in ["style=", "<script", "href=", "http://192"] {
             assert!(!svg.contains(banned), "{banned}");
         }
+    }
+
+    #[test]
+    fn counts_are_short() {
+        assert_eq!(format_count(567), "567");
+        assert_eq!(format_count(34_500), "34k");
+        assert_eq!(format_count(294_620_270), "294.6M");
     }
 
     #[test]

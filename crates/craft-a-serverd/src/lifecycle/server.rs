@@ -84,6 +84,13 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
     }
 
     pub(crate) async fn start_locked(&self, id: &str) -> Result<()> {
+        self.start_locked_within(id, Duration::from_secs(self.cfg.start_timeout_secs))
+            .await
+    }
+
+    /// Like [`Self::start_locked`] with an explicit time allowance (mod
+    /// changes allow more, because every mod adds load time).
+    pub(crate) async fn start_locked_within(&self, id: &str, timeout: Duration) -> Result<()> {
         let row = self.get_row(id)?;
         let plan = memory::plan(
             self.env.total_ram_bytes,
@@ -106,7 +113,7 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
         if let Err(e) = self.rt.create_and_start(&spec).await {
             return self.fail_start(&row, e.to_string()).await;
         }
-        match self.wait_ready(&row).await {
+        match self.wait_ready(&row, timeout).await {
             Ok(()) => {
                 self.transition(&row, ServerEvent::PingOk)?;
                 // From now on the user wants this one up, even after a reboot.
@@ -149,8 +156,12 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
     ///
     /// A slow start is not a failure: the deadline only applies while the
     /// container is still alive, and a dead container fails immediately.
-    async fn wait_ready(&self, row: &ServerRow) -> std::result::Result<(), String> {
-        let deadline = Instant::now() + Duration::from_secs(self.cfg.start_timeout_secs);
+    async fn wait_ready(
+        &self,
+        row: &ServerRow,
+        timeout: Duration,
+    ) -> std::result::Result<(), String> {
+        let deadline = Instant::now() + timeout;
         loop {
             if self.probe.status(row.host_port).await.is_some() {
                 return Ok(());
@@ -175,7 +186,7 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
             if Instant::now() >= deadline {
                 return Err(format!(
                     "server did not answer within {} seconds",
-                    self.cfg.start_timeout_secs
+                    timeout.as_secs()
                 ));
             }
             tokio::time::sleep(self.env.poll_interval).await;
@@ -256,6 +267,10 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
     /// Acknowledges a failed server so it can be started again.
     pub async fn reset(&self, id: &str) -> Result<()> {
         let _guard = self.lock(id).await;
+        self.reset_locked(id).await
+    }
+
+    pub(crate) async fn reset_locked(&self, id: &str) -> Result<()> {
         let row = self.get_row(id)?;
         self.rt.remove(id).await?;
         self.transition(&row, ServerEvent::Reset)?;

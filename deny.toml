@@ -20,6 +20,13 @@ allow = [
     "CC0-1.0",
 ]
 
+# Mozilla's root certificate list, embedded by webpki-roots so TLS to
+# cdn.modrinth.com does not depend on the host's CA store. Data licence;
+# allowed for this one crate only.
+[[licenses.exceptions]]
+crate = "webpki-roots"
+allow = ["CDLA-Permissive-2.0"]
+
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"

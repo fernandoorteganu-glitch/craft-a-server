@@ -172,8 +172,50 @@ pub const LOGS_NOTE: &str = "Newest lines at the bottom. Updates every 2 seconds
 
 // Mods
 pub const MODS_TITLE: &str = "Mods";
-pub const MODS_SOON: &str = "Coming soon";
-pub const MODS_TEXT: &str = "Installing mods from Modrinth, with an automatic backup and rollback if a mod breaks the server, is planned for a later version.";
+pub const MODS_NOTE: &str = "Mods come from Modrinth. Before every change the server is backed up, and it goes back to how it was if it does not start with the change.";
+pub const MODS_SEARCH_LABEL: &str = "Search for a mod";
+pub const MODS_SEARCH: &str = "Search";
+pub const MODS_INCLUDE_UNKNOWN: &str =
+    "Also show mods that do not say whether they work on servers";
+pub const MODS_CHECK_UPDATES: &str = "Check for updates";
+pub const MODS_RESULTS: &str = "Results";
+pub const MODS_NO_RESULTS: &str = "No mods found for this Minecraft version.";
+pub const MODS_INSTALL: &str = "Install";
+pub const MODS_INSTALLED_TAG: &str = "Installed";
+pub const MODS_DEPENDENCY_TAG: &str = "Needed by another mod";
+pub const MODS_INSTALLED: &str = "Installed mods";
+pub const MODS_NONE: &str = "No mods installed yet.";
+pub const MODS_UNTRACKED: &str = "Other files in the mods folder (not managed here)";
+pub const MODS_NEEDED_BY: &str = "Needed by";
+pub const MODS_REMOVE: &str = "Remove";
+pub const MODS_SIDE_REQUIRED: &str = "Server: required";
+pub const MODS_SIDE_OPTIONAL: &str = "Server: optional";
+pub const MODS_SIDE_UNKNOWN: &str = "Server: not stated";
+pub const MODS_STATUS_MISSING: &str = "File missing";
+pub const MODS_STATUS_CHANGED: &str = "File changed";
+pub const MODS_INSTALL_TITLE: &str = "Install this mod?";
+pub const MODS_UPDATE_TITLE: &str = "Update this mod?";
+pub const MODS_CANNOT: &str = "This cannot be installed:";
+pub const MODS_REPLACES: &str = "Replaces";
+pub const MODS_ALSO_INSTALLED: &str = "These required mods will be installed too";
+pub const MODS_ALREADY: &str = "Already installed:";
+pub const MODS_OPTIONAL: &str = "Optional extras you may want, not installed:";
+pub const MODS_RESTART_WARNING: &str = "This will restart the server. Players are disconnected for a minute or more. A backup is taken first, and if the server does not start with the change, everything goes back to how it was.";
+pub const MODS_STOPPED_NOTE: &str = "The server is stopped, so the change cannot be tried out. A backup is taken first. It takes effect the next time the server starts.";
+pub const MODS_INSTALL_CONFIRM: &str = "Yes, install and restart";
+pub const MODS_REMOVE_TITLE: &str = "Remove this mod?";
+pub const MODS_DEPENDENTS_WARNING: &str = "Other mods need this one and may stop working:";
+pub const MODS_REMOVE_ORPHANS: &str = "Also remove what only this mod needed:";
+pub const MODS_REMOVE_CONFIRM: &str = "Yes, remove and restart";
+pub const MODS_UPDATES_TITLE: &str = "Mod updates";
+pub const MODS_UP_TO_DATE: &str = "All mods are up to date.";
+pub const MODS_UPDATE: &str = "Update";
+pub const BUSY_MODS_INSTALL: &str =
+    "Installing the mod. The server restarts, which can take a few minutes.";
+pub const BUSY_MODS_REMOVE: &str =
+    "Removing the mod. The server restarts, which can take a few minutes.";
+pub const DONE_MODS_INSTALL: &str = "The mod was installed.";
+pub const DONE_MODS_REMOVE: &str = "The mod was removed.";
 
 // Settings
 pub const SETTINGS_TITLE: &str = "Settings";

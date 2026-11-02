@@ -1,5 +1,45 @@
+{% import "macros.html" as m %}
 <section class="card">
 <h1>{{ crate::panel::strings::MODS_TITLE }}</h1>
-<p><span class="tag">{{ crate::panel::strings::MODS_SOON }}</span></p>
-<p>{{ crate::panel::strings::MODS_TEXT }}</p>
+{% if !has_server %}
+<p>{{ crate::panel::strings::ERR_NO_SERVER }}.</p>
+{% else %}
+<p class="note">{{ crate::panel::strings::MODS_NOTE }}</p>
+<form method="get" action="/mods" class="form" autocomplete="off">
+<label for="mods_q">{{ crate::panel::strings::MODS_SEARCH_LABEL }}</label>
+<input id="mods_q" name="q" type="text" maxlength="100" value="{{ query }}" autocapitalize="none" autocorrect="off" spellcheck="false">
+<label class="check"><input type="checkbox" name="unknown" value="1"{% if include_unknown %} checked{% endif %}> {{ crate::panel::strings::MODS_INCLUDE_UNKNOWN }}</label>
+<button type="submit" class="btn">{{ crate::panel::strings::MODS_SEARCH }}</button>
+</form>
+<p><a class="btn btn-secondary" href="/mods/updates">{{ crate::panel::strings::MODS_CHECK_UPDATES }}</a></p>
+{% endif %}
 </section>
+{% if let Some(err) = search_error %}
+<section class="card"><p class="alert" role="alert">{{ err }}</p></section>
+{% endif %}
+{% if let Some(found) = results %}
+<section class="card">
+<h2>{{ crate::panel::strings::MODS_RESULTS }}</h2>
+{% if found.is_empty() %}
+<p>{{ crate::panel::strings::MODS_NO_RESULTS }}</p>
+{% else %}
+<ul class="list">
+{% for h in found %}
+<li class="row">
+<div class="grow">
+<strong>{{ h.title }}</strong> <span class="tag">{{ h.side_label }}</span>
+<div class="note">{{ h.author }} &middot; {{ h.downloads }}</div>
+<div>{{ h.description }}</div>
+</div>
+{% if h.installed %}
+<span class="tag">{{ crate::panel::strings::MODS_INSTALLED_TAG }}</span>
+{% else if !busy %}
+<a class="btn" href="/mods/install/{{ h.project_id }}">{{ crate::panel::strings::MODS_INSTALL }}</a>
+{% endif %}
+</li>
+{% endfor %}
+</ul>
+{% endif %}
+</section>
+{% endif %}
+{{ list|safe }}

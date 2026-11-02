@@ -16,7 +16,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Version reported by `ping`; the CLI warns when it differs from its own.
-pub const PROTOCOL_VERSION: u32 = 1;
+pub const PROTOCOL_VERSION: u32 = 2;
 
 /// Longest accepted request line, including the newline.
 pub const MAX_REQUEST_BYTES: usize = 64 * 1024;
@@ -95,6 +95,54 @@ pub enum Command {
     DevicesRevoke {
         id: String,
     },
+    /// Search Modrinth for Fabric mods that run on this server.
+    ModsSearch {
+        id: String,
+        query: String,
+        #[serde(default)]
+        include_unknown: bool,
+        #[serde(default)]
+        offset: u32,
+    },
+    /// Mods recorded for a server, plus unknown jars found in its mods folder.
+    ModsList {
+        id: String,
+    },
+    /// What installing a mod would do (dependencies, conflicts); changes nothing.
+    ModsPlan {
+        id: String,
+        /// Modrinth project id or slug.
+        project: String,
+        #[serde(default)]
+        allow_prerelease: bool,
+    },
+    /// Install a mod and its required dependencies, with a snapshot and
+    /// automatic rollback. Restarts the server if it is running.
+    ModsInstall {
+        id: String,
+        project: String,
+        #[serde(default)]
+        allow_prerelease: bool,
+    },
+    /// What removing a mod would do (dependents, orphaned dependencies).
+    ModsRemovePlan {
+        id: String,
+        project: String,
+    },
+    /// Remove a mod. Refused while other mods need it unless `force`.
+    ModsRemove {
+        id: String,
+        project: String,
+        #[serde(default)]
+        force: bool,
+        /// Also remove dependencies that nothing else needs any more.
+        #[serde(default)]
+        remove_orphans: bool,
+    },
+    /// Compare installed mods with Modrinth (read only).
+    ModsCheck {
+        id: String,
+    },
 }
 
 /// One request line.
@@ -118,6 +166,8 @@ pub enum ErrorKind {
     StartFailed,
     DiskLow,
     Memory,
+    /// A mod operation failed or was rolled back; the message says why and is safe to show.
+    Mods,
     Internal,
 }
 
@@ -131,6 +181,7 @@ impl ErrorKind {
             ErrorKind::StartFailed => "start_failed",
             ErrorKind::DiskLow => "disk_low",
             ErrorKind::Memory => "memory",
+            ErrorKind::Mods => "mods",
             ErrorKind::Internal => "internal",
         }
     }
@@ -201,6 +252,117 @@ pub struct DeviceInfo {
     pub expires_unix: i64,
 }
 
+/// A Modrinth search result. Text fields come from Modrinth and are untrusted.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModHitInfo {
+    pub project_id: String,
+    pub slug: String,
+    pub title: String,
+    pub description: String,
+    pub author: String,
+    pub downloads: u64,
+    /// `required`, `optional` or `unknown`.
+    pub server_side: String,
+    pub installed: bool,
+}
+
+/// One mod in an install plan or result.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModLineInfo {
+    pub project_id: String,
+    pub title: String,
+    pub version_number: String,
+    /// `release`, `beta` or `alpha`.
+    pub version_type: String,
+    pub size_bytes: u64,
+    pub file_name: String,
+    pub as_dependency: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModInstallPlanInfo {
+    pub server_id: String,
+    pub mc_version: String,
+    /// Installing restarts the server when it is running.
+    pub server_running: bool,
+    /// The mod that was asked for (last in install order).
+    pub target: ModLineInfo,
+    /// Required dependencies that will be installed too.
+    pub dependencies: Vec<ModLineInfo>,
+    /// Titles of required dependencies that are already installed.
+    pub already_installed: Vec<String>,
+    /// Titles of optional dependencies that are not installed (suggestions).
+    pub optional: Vec<String>,
+    /// Human-readable reasons the install cannot go ahead; empty when it can.
+    pub conflicts: Vec<String>,
+    /// Title and version of the older build this one replaces (an update).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub replaces: Option<String>,
+    /// Dependencies Modrinth lists without a project or version id.
+    pub unresolved: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InstalledModInfo {
+    pub project_id: String,
+    pub title: String,
+    pub version_number: String,
+    pub file_name: String,
+    pub size_bytes: u64,
+    pub as_dependency: bool,
+    pub installed_unix: i64,
+    /// `ok`, `missing` (jar gone from the folder) or `size_changed`.
+    pub status: String,
+    /// Titles of installed mods that need this one.
+    pub required_by: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModListInfo {
+    pub mods: Vec<InstalledModInfo>,
+    /// Jars in the mods folder that were not installed through the panel or CLI.
+    pub untracked: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModRemovePlanInfo {
+    pub server_id: String,
+    pub project_id: String,
+    pub title: String,
+    pub server_running: bool,
+    /// Installed mods that need this one (removing it may break them).
+    pub dependents: Vec<String>,
+    /// Dependencies that nothing else needs once this is gone.
+    pub orphans: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModUpdateInfo {
+    pub project_id: String,
+    pub title: String,
+    pub installed_version: String,
+    pub latest_version: String,
+}
+
+/// The result of a completed install or removal.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModChangeInfo {
+    pub installed: Vec<ModLineInfo>,
+    pub removed: Vec<String>,
+    /// The server was restarted and answered its status ping. False when the
+    /// server was stopped, so the change could not be tried out.
+    pub verified: bool,
+    pub backup_id: Option<String>,
+}
+
 /// What the daemon answers.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data", rename_all = "snake_case")]
@@ -229,6 +391,12 @@ pub enum Response {
         alt_urls: Vec<String>,
     },
     Devices(Vec<DeviceInfo>),
+    ModHits(Vec<ModHitInfo>),
+    ModList(ModListInfo),
+    ModPlan(ModInstallPlanInfo),
+    ModRemovePlan(ModRemovePlanInfo),
+    ModUpdates(Vec<ModUpdateInfo>),
+    ModChange(ModChangeInfo),
     Error {
         kind: ErrorKind,
         message: String,
@@ -332,6 +500,34 @@ mod tests {
             Command::Pair {},
             Command::DevicesList {},
             Command::DevicesRevoke { id: id() },
+            Command::ModsSearch {
+                id: id(),
+                query: "lithium".into(),
+                include_unknown: true,
+                offset: 20,
+            },
+            Command::ModsList { id: id() },
+            Command::ModsPlan {
+                id: id(),
+                project: "fabric-api".into(),
+                allow_prerelease: false,
+            },
+            Command::ModsInstall {
+                id: id(),
+                project: "P7dR8mSH".into(),
+                allow_prerelease: true,
+            },
+            Command::ModsRemovePlan {
+                id: id(),
+                project: "P7dR8mSH".into(),
+            },
+            Command::ModsRemove {
+                id: id(),
+                project: "P7dR8mSH".into(),
+                force: true,
+                remove_orphans: true,
+            },
+            Command::ModsCheck { id: id() },
         ]
     }
 
@@ -385,6 +581,26 @@ mod tests {
             created_unix: 1,
             verified: true,
         };
+        let line = ModLineInfo {
+            project_id: "p".into(),
+            title: "T".into(),
+            version_number: "1.0".into(),
+            version_type: "release".into(),
+            size_bytes: 9,
+            file_name: "t.jar".into(),
+            as_dependency: false,
+        };
+        let installed = InstalledModInfo {
+            project_id: "p".into(),
+            title: "T".into(),
+            version_number: "1.0".into(),
+            file_name: "t.jar".into(),
+            size_bytes: 9,
+            as_dependency: true,
+            installed_unix: 3,
+            status: "ok".into(),
+            required_by: vec!["U".into()],
+        };
         let responses = vec![
             Response::Pong {
                 protocol: PROTOCOL_VERSION,
@@ -423,6 +639,52 @@ mod tests {
                 last_seen_unix: 2,
                 expires_unix: 3,
             }]),
+            Response::ModHits(vec![ModHitInfo {
+                project_id: "P7dR8mSH".into(),
+                slug: "fabric-api".into(),
+                title: "Fabric API".into(),
+                description: "<b>x</b>".into(),
+                author: "modmuss50".into(),
+                downloads: 5,
+                server_side: "optional".into(),
+                installed: false,
+            }]),
+            Response::ModList(ModListInfo {
+                mods: vec![installed.clone()],
+                untracked: vec!["hand.jar".into()],
+            }),
+            Response::ModPlan(ModInstallPlanInfo {
+                server_id: "s1".into(),
+                mc_version: "26.3".into(),
+                server_running: true,
+                target: line.clone(),
+                dependencies: vec![line.clone()],
+                already_installed: vec!["A".into()],
+                optional: vec!["B".into()],
+                conflicts: vec![],
+                replaces: Some("Old 1.0".into()),
+                unresolved: 0,
+            }),
+            Response::ModRemovePlan(ModRemovePlanInfo {
+                server_id: "s1".into(),
+                project_id: "p".into(),
+                title: "T".into(),
+                server_running: false,
+                dependents: vec!["D".into()],
+                orphans: vec![],
+            }),
+            Response::ModUpdates(vec![ModUpdateInfo {
+                project_id: "p".into(),
+                title: "T".into(),
+                installed_version: "1".into(),
+                latest_version: "2".into(),
+            }]),
+            Response::ModChange(ModChangeInfo {
+                installed: vec![line],
+                removed: vec!["Old".into()],
+                verified: true,
+                backup_id: Some("b".into()),
+            }),
             Response::Error {
                 kind: ErrorKind::WrongState,
                 message: "nope".into(),
@@ -466,6 +728,7 @@ mod tests {
             ErrorKind::StartFailed,
             ErrorKind::DiskLow,
             ErrorKind::Memory,
+            ErrorKind::Mods,
             ErrorKind::Internal,
         ] {
             assert_eq!(
@@ -473,6 +736,34 @@ mod tests {
                 format!("\"{}\"", kind.as_str())
             );
         }
+        Ok(())
+    }
+
+    #[test]
+    fn mod_commands_have_stable_wire_names_and_defaults() -> TestResult {
+        let cmd =
+            parse_request(r#"{"cmd":{"type":"mods_install","id":"s1","project":"sodium"}}"#)?.cmd;
+        assert_eq!(
+            cmd,
+            Command::ModsInstall {
+                id: "s1".into(),
+                project: "sodium".into(),
+                allow_prerelease: false
+            }
+        );
+        let cmd = parse_request(r#"{"cmd":{"type":"mods_remove","id":"s1","project":"x"}}"#)?.cmd;
+        assert!(matches!(
+            cmd,
+            Command::ModsRemove {
+                force: false,
+                remove_orphans: false,
+                ..
+            }
+        ));
+        assert!(
+            parse_request(r#"{"cmd":{"type":"mods_install","id":"s1","project":"x","sudo":1}}"#)
+                .is_err()
+        );
         Ok(())
     }
 

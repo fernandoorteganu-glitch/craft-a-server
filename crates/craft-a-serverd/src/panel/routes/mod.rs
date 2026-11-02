@@ -8,6 +8,7 @@
 
 mod assets;
 mod backups;
+mod mods;
 mod pair;
 mod players;
 mod screens;
@@ -165,7 +166,19 @@ where
             Access::Session,
             get(screens::logs_tail::<R, P>),
         )
-        .add("/mods", Access::Session, get(screens::mods_page))
+        .add("/mods", Access::Session, get(mods::page::<R, P>))
+        .add("/partials/mods", Access::Session, get(mods::list::<R, P>))
+        .add("/mods/updates", Access::Session, get(mods::updates::<R, P>))
+        .add(
+            "/mods/install/{id}",
+            Access::Session,
+            get(mods::install_confirm::<R, P>).post(mods::install::<R, P>),
+        )
+        .add(
+            "/mods/remove/{id}",
+            Access::Session,
+            get(mods::remove_confirm::<R, P>).post(mods::remove::<R, P>),
+        )
         .add(
             "/settings/devices",
             Access::Session,

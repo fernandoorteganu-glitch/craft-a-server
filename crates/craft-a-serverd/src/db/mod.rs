@@ -6,8 +6,10 @@
 //! copy of the old file taken first.
 
 mod migrations;
+mod mods;
 mod pairing;
 
+pub use mods::{ModChange, ModRow};
 pub use pairing::{SessionRow, hash_secret};
 
 use std::path::{Path, PathBuf};

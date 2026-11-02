@@ -355,6 +355,10 @@ pub fn error_response(e: &ServiceError) -> Response {
         ServiceError::StartFailed(_) => error(ErrorKind::StartFailed, e.to_string()),
         ServiceError::DiskLow => error(ErrorKind::DiskLow, e.to_string()),
         ServiceError::Memory(_) => error(ErrorKind::Memory, e.to_string()),
+        ServiceError::Mods(m) => error(
+            ErrorKind::Mods,
+            crate::mods::logic::clean_text(&m.to_string(), 600),
+        ),
         ServiceError::Runtime(RuntimeError::NotFound(_)) => error(
             ErrorKind::WrongState,
             "the server is not running".to_owned(),
@@ -502,6 +506,39 @@ where
                 })
                 .collect(),
         ),
+        Command::ModsSearch {
+            id,
+            query,
+            include_unknown,
+            offset,
+        } => Response::ModHits(
+            svc.mods_search(&id, &query, include_unknown, offset)
+                .await?,
+        ),
+        Command::ModsList { id } => Response::ModList(svc.mods_list(&id).await?),
+        Command::ModsPlan {
+            id,
+            project,
+            allow_prerelease,
+        } => Response::ModPlan(svc.mods_plan(&id, &project, allow_prerelease).await?),
+        Command::ModsInstall {
+            id,
+            project,
+            allow_prerelease,
+        } => Response::ModChange(svc.mods_install(&id, &project, allow_prerelease).await?),
+        Command::ModsRemovePlan { id, project } => {
+            Response::ModRemovePlan(svc.mods_remove_plan(&id, &project)?)
+        }
+        Command::ModsRemove {
+            id,
+            project,
+            force,
+            remove_orphans,
+        } => Response::ModChange(
+            svc.mods_remove(&id, &project, force, remove_orphans)
+                .await?,
+        ),
+        Command::ModsCheck { id } => Response::ModUpdates(svc.mods_check(&id).await?),
         Command::DevicesRevoke { id } => {
             if svc.db().delete_session(&id)? {
                 svc.event(

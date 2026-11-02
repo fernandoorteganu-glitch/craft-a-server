@@ -1,0 +1,18 @@
+<section class="card">
+<h1>{{ crate::panel::strings::MODS_UPDATES_TITLE }}</h1>
+{% if let Some(err) = error %}
+<p class="alert" role="alert">{{ err }}</p>
+{% else if updates.is_empty() %}
+<p>{{ crate::panel::strings::MODS_UP_TO_DATE }}</p>
+{% else %}
+<ul class="list">
+{% for u in updates %}
+<li class="row">
+<div class="grow"><strong>{{ u.title }}</strong><div class="note">{{ u.installed_version }} &rarr; {{ u.latest_version }}</div></div>
+{% if !busy %}<a class="btn" href="/mods/install/{{ u.project_id }}">{{ crate::panel::strings::MODS_UPDATE }}</a>{% endif %}
+</li>
+{% endfor %}
+</ul>
+{% endif %}
+<p><a class="btn btn-secondary" href="/mods">{{ crate::panel::strings::NAV_MODS }}</a></p>
+</section>

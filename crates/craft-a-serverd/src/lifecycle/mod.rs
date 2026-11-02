@@ -6,6 +6,7 @@
 //! tested against fakes.
 
 mod backups;
+mod mods;
 mod recovery;
 mod server;
 
@@ -29,6 +30,7 @@ use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard};
 
 use crate::backup::BackupError;
 use crate::db::{Db, DbError, ServerRow};
+use crate::mods::{ModError, ModrinthClient};
 use crate::runtime::{ContainerRuntime, RuntimeError};
 
 pub use backups::Reason;
@@ -57,6 +59,8 @@ pub enum ServiceError {
     Runtime(#[from] RuntimeError),
     #[error(transparent)]
     Backup(#[from] BackupError),
+    #[error(transparent)]
+    Mods(#[from] ModError),
     #[error("i/o error during {context}: {source}")]
     Io {
         context: &'static str,
@@ -176,6 +180,8 @@ pub struct Service<R, P> {
     pub(crate) rt: Arc<R>,
     pub(crate) probe: Arc<P>,
     pub(crate) env: Env,
+    /// Present when mod management is set up (see [`Service::with_modrinth`]).
+    pub(crate) modrinth: Option<Arc<ModrinthClient>>,
     locks: Mutex<HashMap<String, Arc<AsyncMutex<()>>>>,
     failures: Mutex<HashMap<String, u32>>,
 }
@@ -188,9 +194,17 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
             rt,
             probe,
             env,
+            modrinth: None,
             locks: Mutex::new(HashMap::new()),
             failures: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// Enables mod management with the given Modrinth client.
+    #[must_use]
+    pub fn with_modrinth(mut self, client: Arc<ModrinthClient>) -> Self {
+        self.modrinth = Some(client);
+        self
     }
 
     pub fn db(&self) -> &Db {

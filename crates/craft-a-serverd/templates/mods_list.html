@@ -1,0 +1,29 @@
+<section id="mods-list" class="card" hx-get="/partials/mods" hx-trigger="every 3s" hx-swap="outerHTML">
+{% include "banner.html" %}
+<h2>{{ crate::panel::strings::MODS_INSTALLED }}</h2>
+{% if mods.is_empty() %}
+<p>{{ crate::panel::strings::MODS_NONE }}</p>
+{% else %}
+<ul class="list">
+{% for m in mods %}
+<li class="row">
+<div class="grow">
+<strong>{{ m.title }}</strong> <span class="note">{{ m.version }}</span>
+{% if m.dependency %}<span class="tag">{{ crate::panel::strings::MODS_DEPENDENCY_TAG }}</span>{% endif %}
+{% if let Some(s) = m.status %}<span class="tag tag-warn">{{ s }}</span>{% endif %}
+{% if !m.required_by.is_empty() %}<div class="note">{{ crate::panel::strings::MODS_NEEDED_BY }} {{ m.required_by }}</div>{% endif %}
+</div>
+{% if banner.busy.is_none() %}
+<a class="btn btn-secondary" href="/mods/remove/{{ m.project_id }}">{{ crate::panel::strings::MODS_REMOVE }}</a>
+{% endif %}
+</li>
+{% endfor %}
+</ul>
+{% endif %}
+{% if !untracked.is_empty() %}
+<h3>{{ crate::panel::strings::MODS_UNTRACKED }}</h3>
+<ul class="list">
+{% for u in untracked %}<li class="row"><div class="grow note">{{ u }}</div></li>{% endfor %}
+</ul>
+{% endif %}
+</section>

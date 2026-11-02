@@ -124,11 +124,7 @@ async fn every_screen_renders_with_its_navigation_entry() -> TestResult {
             "href=\"/logs\" aria-current=\"page\"",
             "/logs/tail",
         ),
-        (
-            "/mods",
-            "href=\"/mods\" aria-current=\"page\"",
-            "Coming soon",
-        ),
+        ("/mods", "href=\"/mods\" aria-current=\"page\"", "no server"),
         (
             "/settings/devices",
             "href=\"/settings/devices\" aria-current=\"page\"",
@@ -906,13 +902,244 @@ async fn settings_explain_when_no_ip_address_is_known() -> TestResult {
     Ok(())
 }
 
+// -------------------------------------------------------------------- mods
+
+const ALPHA: &str = "AAAAAAAA";
+const BETA: &str = "BBBBBBBB";
+const EVIL: &str = "CCCCCCCC";
+
+/// Alpha (needs Beta), Beta, and a project whose texts try to inject markup.
+fn seed_modrinth(h: &Harness) {
+    use crate::mods::testutil::{Synth, serve_synth};
+    serve_synth(&h.net, "Beta Lib", "required", &[Synth::new(BETA, "b1")]);
+    serve_synth(
+        &h.net,
+        "Alpha Mod",
+        "optional",
+        &[Synth::new(ALPHA, "a1").dep(BETA, "required")],
+    );
+    serve_synth(
+        &h.net,
+        "<script>alert(1)</script>",
+        "required",
+        &[Synth::new(EVIL, "c1")],
+    );
+    let p = |id: &str, title: &str| serde_json::json!({"id": id, "title": title, "project_type": "mod", "server_side": "required"});
+    h.net.api(
+        "/projects",
+        &serde_json::json!([
+            p(ALPHA, "Alpha Mod"),
+            p(BETA, "Beta Lib"),
+            p(EVIL, "<script>alert(1)</script>")
+        ]),
+    );
+    h.net.api(
+        "/search",
+        &serde_json::json!({"hits": [
+            {"project_id": ALPHA, "slug": "alpha", "title": "<img src=x onerror=alert(1)>",
+             "description": "<b>bold</b> & \"quoted\"", "author": "<i>me</i>", "downloads": 1_234_567,
+             "server_side": "optional", "project_type": "mod",
+             "icon_url": "https://cdn.modrinth.com/data/AAAAAAAA/icon.png"},
+            {"project_id": BETA, "slug": "beta", "title": "Beta Lib", "description": "lib",
+             "author": "x", "downloads": 5, "server_side": "required", "project_type": "mod"},
+        ]}),
+    );
+}
+
 #[tokio::test]
-async fn mods_is_a_placeholder_without_actions() -> TestResult {
+async fn the_mods_screen_without_a_server_says_so_and_has_no_form() -> TestResult {
     let (h, _dir) = screens_harness(|_| {});
     let s = h.pair("Pixel").await;
     let html = get(&h, &s, "/mods").await.text();
-    assert!(html.contains("Coming soon"));
+    assert!(html.contains("no server"), "{html}");
     assert!(!html.contains("<form"), "{html}");
+    assert!(!html.contains("Coming soon"));
+    Ok(())
+}
+
+#[tokio::test]
+async fn search_results_are_escaped_badged_and_have_no_images() -> TestResult {
+    let (h, _dir) = screens_harness(|_| {});
+    let s = h.pair("Pixel").await;
+    create(&h, &s).await;
+    seed_modrinth(&h);
+    let res = get(&h, &s, "/mods?q=alpha").await;
+    assert_eq!(res.status, StatusCode::OK);
+    let html = res.text();
+    assert!(html.contains("&#60;img"), "{html}");
+    assert!(!html.contains("<img"), "{html}");
+    assert!(!html.contains("<b>bold</b>") && !html.contains("<i>me</i>"));
+    assert!(html.contains("Server: optional") && html.contains("Server: required"));
+    assert!(html.contains("1.2M downloads"), "{html}");
+    assert!(html.contains(&format!("/mods/install/{ALPHA}")));
+    assert!(
+        !html.contains("cdn.modrinth.com"),
+        "no remote icon is loaded"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_failing_search_shows_a_calm_message() -> TestResult {
+    let (h, _dir) = screens_harness(|_| {});
+    let s = h.pair("Pixel").await;
+    create(&h, &s).await;
+    h.net.route(
+        "https://api.modrinth.com/v2/search",
+        vec![crate::mods::testutil::Reply::Status(400)],
+    );
+    let res = get(&h, &s, "/mods?q=alpha").await;
+    assert_eq!(res.status, StatusCode::OK);
+    assert!(res.text().contains("role=\"alert\""));
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_install_page_lists_dependencies_and_offers_the_confirm_button() -> TestResult {
+    let (h, _dir) = screens_harness(|_| {});
+    let s = h.pair("Pixel").await;
+    create(&h, &s).await;
+    seed_modrinth(&h);
+    let html = get(&h, &s, &format!("/mods/install/{ALPHA}")).await.text();
+    assert!(html.contains("Alpha Mod"), "{html}");
+    assert!(
+        html.contains("Beta Lib"),
+        "the dependency is listed\n{html}"
+    );
+    assert!(html.contains("These required mods will be installed too"));
+    assert!(html.contains("name=\"confirm\" value=\"yes\""));
+    assert!(html.contains("name=\"csrf_token\""));
+    // Hostile titles are escaped here too.
+    let evil = get(&h, &s, &format!("/mods/install/{EVIL}")).await.text();
+    assert!(evil.contains("&#60;script&#62;"), "{evil}");
+    assert!(!evil.contains("<script>alert"), "{evil}");
+    Ok(())
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn the_install_page_of_a_running_server_says_it_will_restart() -> TestResult {
+    let (h, _dir) = screens_harness(|_| {});
+    let s = h.pair("Pixel").await;
+    create_and_start(&h, &s).await;
+    seed_modrinth(&h);
+    let html = get(&h, &s, &format!("/mods/install/{ALPHA}")).await.text();
+    assert!(html.contains("This will restart the server"), "{html}");
+    Ok(())
+}
+
+#[tokio::test]
+async fn bad_project_ids_never_reach_modrinth() -> TestResult {
+    let (h, _dir) = screens_harness(|_| {});
+    let s = h.pair("Pixel").await;
+    create(&h, &s).await;
+    for path in [
+        "/mods/install/..%2F..%2Fetc",
+        "/mods/install/has%20space",
+        "/mods/remove/%3Cscript%3E",
+        "/mods/remove/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    ] {
+        let res = get(&h, &s, path).await;
+        assert_eq!(res.status, StatusCode::NOT_FOUND, "{path}: {}", res.status);
+    }
+    let res = post(&h, &s, "/mods/install/not$valid", "confirm=yes").await;
+    assert_eq!(res.status, StatusCode::NOT_FOUND);
+    assert!(h.net.requests().is_empty(), "nothing reached Modrinth");
+    Ok(())
+}
+
+#[tokio::test]
+async fn installing_and_removing_need_the_confirm_field() -> TestResult {
+    let (h, _dir) = screens_harness(|_| {});
+    let s = h.pair("Pixel").await;
+    create(&h, &s).await;
+    seed_modrinth(&h);
+    for path in [
+        format!("/mods/install/{ALPHA}"),
+        format!("/mods/remove/{ALPHA}"),
+    ] {
+        let res = post(&h, &s, &path, "").await;
+        assert!(res.status.is_client_error(), "{path}: {}", res.status);
+        let res = post(&h, &s, &path, "confirm=no").await;
+        assert!(res.status.is_client_error(), "{path}: {}", res.status);
+    }
+    assert!(h.svc.db().list_mods(&server_id(&h))?.is_empty());
+    Ok(())
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_confirmed_install_runs_in_the_background_and_shows_in_the_list() -> TestResult {
+    let (h, _dir) = screens_harness(|_| {});
+    let s = h.pair("Pixel").await;
+    create(&h, &s).await;
+    seed_modrinth(&h);
+
+    let res = post(&h, &s, &format!("/mods/install/{ALPHA}"), "confirm=yes").await;
+    assert_eq!(res.status, StatusCode::SEE_OTHER, "{}", res.text());
+    assert_eq!(location(&res), "/mods");
+    idle(&h, &s).await;
+
+    let rows = h.svc.db().list_mods(&server_id(&h))?;
+    assert_eq!(rows.len(), 2);
+    let page = get(&h, &s, "/mods").await.text();
+    assert!(
+        page.contains("Alpha Mod") && page.contains("Beta Lib"),
+        "{page}"
+    );
+    assert!(page.contains("Needed by"), "{page}");
+    assert!(page.contains(&format!("/mods/remove/{BETA}")));
+    let list = get(&h, &s, "/partials/mods").await.text();
+    assert!(list.contains("The mod was installed."), "{list}");
+    Ok(())
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn removal_shows_dependents_and_runs_after_confirmation() -> TestResult {
+    let (h, _dir) = screens_harness(|_| {});
+    let s = h.pair("Pixel").await;
+    create(&h, &s).await;
+    seed_modrinth(&h);
+    post(&h, &s, &format!("/mods/install/{ALPHA}"), "confirm=yes").await;
+    idle(&h, &s).await;
+
+    let html = get(&h, &s, &format!("/mods/remove/{BETA}")).await.text();
+    assert!(html.contains("Other mods need this one"), "{html}");
+    assert!(html.contains("Alpha Mod"), "{html}");
+    // Snapshots are named by the second: let the clock move between changes.
+    h.clock.fetch_add(60, std::sync::atomic::Ordering::SeqCst);
+    // Refused (without force the service says no); the records stay.
+    let res = post(&h, &s, &format!("/mods/remove/{BETA}"), "confirm=yes").await;
+    assert_eq!(res.status, StatusCode::SEE_OTHER);
+    idle(&h, &s).await;
+    assert_eq!(h.svc.db().list_mods(&server_id(&h))?.len(), 2);
+
+    h.clock.fetch_add(60, std::sync::atomic::Ordering::SeqCst);
+    // Alpha with its automatic dependency.
+    let page = get(&h, &s, &format!("/mods/remove/{ALPHA}")).await.text();
+    assert!(page.contains("Beta Lib"), "{page}");
+    let res = post(
+        &h,
+        &s,
+        &format!("/mods/remove/{ALPHA}"),
+        "confirm=yes&orphans=yes",
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::SEE_OTHER);
+    idle(&h, &s).await;
+    let left = get(&h, &s, "/partials/mods").await.text();
+    assert!(h.svc.db().list_mods(&server_id(&h))?.is_empty(), "{left}");
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_update_page_says_all_is_current_when_nothing_is_installed() -> TestResult {
+    let (h, _dir) = screens_harness(|_| {});
+    let s = h.pair("Pixel").await;
+    create(&h, &s).await;
+    let html = get(&h, &s, "/mods/updates").await.text();
+    assert!(html.contains("up to date"), "{html}");
     Ok(())
 }
 
@@ -929,6 +1156,10 @@ async fn new_screens_require_a_session() -> TestResult {
         "/logs",
         "/logs/tail",
         "/mods",
+        "/partials/mods",
+        "/mods/updates",
+        "/mods/install/0123456789abcdef",
+        "/mods/remove/0123456789abcdef",
         "/settings/devices",
         "/server/reset",
         "/server/delete",

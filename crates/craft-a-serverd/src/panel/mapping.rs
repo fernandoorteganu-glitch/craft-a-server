@@ -18,6 +18,9 @@ pub fn service_error_text(e: &ServiceError) -> String {
         ServiceError::StartFailed(_) => s::ERR_START_FAILED.to_owned(),
         ServiceError::DiskLow => s::ERR_DISK_LOW.to_owned(),
         ServiceError::Memory(_) => s::ERR_MEMORY.to_owned(),
+        // Written for people and free of paths; may hold mod names, which
+        // the templates escape.
+        ServiceError::Mods(m) => capitalize(&crate::mods::logic::clean_text(&m.to_string(), 500)),
         ServiceError::Db(_)
         | ServiceError::Runtime(_)
         | ServiceError::Backup(_)
@@ -34,6 +37,7 @@ pub fn service_error(e: &ServiceError) -> PanelError {
         ServiceError::WrongState { .. }
         | ServiceError::DiskLow
         | ServiceError::Memory(_)
+        | ServiceError::Mods(_)
         | ServiceError::StartFailed(_) => PanelError::Conflict(text),
         ServiceError::Db(_)
         | ServiceError::Runtime(_)

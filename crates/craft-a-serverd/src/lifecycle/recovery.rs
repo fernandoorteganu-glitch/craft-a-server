@@ -55,6 +55,10 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
 
             report.partial_backups_removed += self.remove_partial_backups(&server.id);
 
+            // A mod change cut short by a crash is undone (or finished) before
+            // anything else looks at the mods folder.
+            self.recover_mod_change_locked(&server.id).await;
+
             let info = self.rt.inspect(&server.id).await?;
             let running = info.state == ContainerState::Running;
             match (&server.state, running) {

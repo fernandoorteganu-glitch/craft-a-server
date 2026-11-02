@@ -316,6 +316,16 @@ Findings to carry forward:
 
 Next: Phase 2 (local panel). It is security-critical (pairing, sessions, CSRF, Host/Origin checks, CSP); per our working rules I will confirm the open points below before building.
 
+## 7d. Phase 3 status (2026-11-02): Modrinth mod management built, not committed
+
+Built: `craft-a-serverd::mods` (Transport trait with a rustls `ureq` implementation, 5 req/s limiter, retries with backoff, resolver with cycle/diamond/pin handling, verified downloads, structural jar check, journal-based transaction), `lifecycle::mods` (plan, install, remove, update check, boot recovery), DB migration v4 (`mods`, `mod_requires`), ctl protocol v2 (`mods search|list|install|remove|check` and plan commands), CLI `craft-a-server mods ...` with a confirm preview, and the panel Mods screen (search, install confirm with dependencies and restart warning, installed list with remove, update check, progress through the background-action slot).
+
+Evidence:
+- Real Podman + real Modrinth (WSL): `mods search "fabric api"`, `mods install` of Fabric API 0.165.0+26.3 on a running Fabric 26.3 server (stop, pre_change snapshot, move, restart, status ping OK, record written); then a forced failure (an unmanaged jar that depends on fabric-api, then `mods remove` of Fabric API): the server exited on start, the change was rolled back from the snapshot, Fabric API was back, the server was Running again and the DB still listed it.
+- Tests use no network: hash mismatch, wrong host, redirect, oversize and size-mismatch downloads, non-jar content, traversal file names, dependency cycles, rollback on a failed health check (fake runtime), crash between any two steps of staging -> move, boot recovery of an interrupted or committed change, panel escaping and CSRF.
+
+Known limits: the jar check reads only the zip central directory (no decompression); `incompatible` is checked for new or planned mods against installed ones, not for the installed mods' own lists; update check offers newer releases only; records go stale after a manual backup restore (the list shows `missing` / `size_changed`); removal by title needs an exact title; two changes inside one second collide on the pre_change backup name (existing backup naming); the rollback message quotes the tail of the container log, which is not always the most useful line; no mod icons (CSP unchanged).
+
 ## 8. Decisions log
 
 | Date | Decision | Alternatives | Reason |
@@ -339,3 +349,9 @@ Next: Phase 2 (local panel). It is security-critical (pairing, sessions, CSRF, H
 | 2026-11-01 | Panel security core (peer filter, Host/Origin, CSRF, CSP, rate limits, route-auth table) committed as `038dedc` | — | Phase 2A; htmx/CSP not yet exercised in a real browser |
 | 2026-11-02 | Referrer-Policy changed from `no-referrer` to `same-origin` | Keep no-referrer and relax the Origin check | Real Chrome sent `Origin: null` on form posts under no-referrer, breaking pairing; unit tests could not see it. Nothing is sent cross-origin |
 | 2026-11-02 | Phase 2B screens (home, create, backups, players, logs, settings/devices, mods placeholder) built; logs short-poll instead of SSE; verified with Playwright Chromium at 360 px against real daemon + Podman | SSE | Simpler under strict CSP; restore/delete/reset confirms to completion and a real phone not browser-tested |
+| 2026-11-02 | Modrinth HTTP client is `ureq` 3 (blocking, rustls with embedded webpki roots, proxies off, redirects off, https only) behind a `Transport` trait; deny.toml gets a `CDLA-Permissive-2.0` exception for `webpki-roots` | `reqwest` (async, larger tree), hand-rolled client | Smallest dependency set that fits `spawn_blocking`; the trait keeps every test offline |
+| 2026-11-02 | Mod change order: download and verify into staging while running, then stop, take the `pre_change` snapshot, move files, restart and health-check, commit or restore | Snapshot first, while running | A snapshot of a quiet server loses no play time on rollback; nothing is visible to the game until the move |
+| 2026-11-02 | ctl protocol version 2 (mods commands, `mods` error kind) | Keep 1 | Old CLIs must not talk to a daemon that knows commands they cannot parse |
+| 2026-11-02 | Additive optional config field `modrinth_contact` (printable ASCII, <=100) appended to the User-Agent | Hard-coded contact | Modrinth asks for a way to reach the author; absent means the repository URL only |
+| 2026-11-02 | Health-check allowance after a mod change = `start_timeout_secs` + 10 s per mod, capped at 1800 s | Fixed timeout | Closes review item 5 for mod-heavy servers |
+| 2026-11-02 | Mods screen shows no icons | Proxy and cache icons through the daemon | CSP `img-src` stays `'self' data:`; proxying is a separate piece of work |

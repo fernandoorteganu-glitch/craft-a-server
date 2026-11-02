@@ -225,6 +225,18 @@ a:focus-visible {
   border-radius: 999px;
 }
 
+.tag-warn {
+  color: var(--danger-text);
+  background: var(--danger-bg);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
 .foot {
   padding: 16px;
   text-align: center;

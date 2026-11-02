@@ -95,6 +95,50 @@ pub enum Cmd {
         #[command(subcommand)]
         action: DevicesCmd,
     },
+    /// Find, install, remove and check mods from Modrinth.
+    Mods {
+        #[command(subcommand)]
+        action: ModsCmd,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ModsCmd {
+    /// Search Fabric mods that run on the server.
+    Search {
+        id: String,
+        query: String,
+        /// Also list mods whose server support is not stated.
+        #[arg(long)]
+        include_unknown: bool,
+        /// Skip this many results (paging).
+        #[arg(long, default_value_t = 0)]
+        offset: u32,
+    },
+    /// List installed mods and unmanaged jars.
+    List { id: String },
+    /// Install a mod (id or slug) with its required dependencies. Takes a
+    /// backup first and rolls back if the server does not come up.
+    Install {
+        id: String,
+        project: String,
+        /// Allow beta and alpha builds when no release exists.
+        #[arg(long)]
+        allow_prerelease: bool,
+    },
+    /// Remove an installed mod (id from `mods list`).
+    Remove {
+        id: String,
+        project: String,
+        /// Remove even though other mods need it.
+        #[arg(long)]
+        force: bool,
+        /// Also remove dependencies nothing else needs.
+        #[arg(long)]
+        remove_orphans: bool,
+    },
+    /// Check installed mods for newer releases (changes nothing).
+    Check { id: String },
 }
 
 #[derive(Debug, Subcommand)]
@@ -178,6 +222,41 @@ impl Cmd {
                 DevicesCmd::List => Command::DevicesList {},
                 DevicesCmd::Revoke { id } => Command::DevicesRevoke { id: id.clone() },
             },
+            Cmd::Mods { action } => match action {
+                ModsCmd::Search {
+                    id,
+                    query,
+                    include_unknown,
+                    offset,
+                } => Command::ModsSearch {
+                    id: id.clone(),
+                    query: query.clone(),
+                    include_unknown: *include_unknown,
+                    offset: *offset,
+                },
+                ModsCmd::List { id } => Command::ModsList { id: id.clone() },
+                ModsCmd::Install {
+                    id,
+                    project,
+                    allow_prerelease,
+                } => Command::ModsInstall {
+                    id: id.clone(),
+                    project: project.clone(),
+                    allow_prerelease: *allow_prerelease,
+                },
+                ModsCmd::Remove {
+                    id,
+                    project,
+                    force,
+                    remove_orphans,
+                } => Command::ModsRemove {
+                    id: id.clone(),
+                    project: project.clone(),
+                    force: *force,
+                    remove_orphans: *remove_orphans,
+                },
+                ModsCmd::Check { id } => Command::ModsCheck { id: id.clone() },
+            },
         }
     }
 
@@ -203,6 +282,26 @@ fn console(id: &str, action: ConsoleAction, player: &str) -> Command {
         id: id.to_owned(),
         action,
         player: Some(player.to_owned()),
+    }
+}
+
+/// The read-only "what would happen" request that precedes an install or removal.
+pub fn plan_command(action: &ModsCmd) -> Option<Command> {
+    match action {
+        ModsCmd::Install {
+            id,
+            project,
+            allow_prerelease,
+        } => Some(Command::ModsPlan {
+            id: id.clone(),
+            project: project.clone(),
+            allow_prerelease: *allow_prerelease,
+        }),
+        ModsCmd::Remove { id, project, .. } => Some(Command::ModsRemovePlan {
+            id: id.clone(),
+            project: project.clone(),
+        }),
+        _ => None,
     }
 }
 
@@ -379,6 +478,51 @@ mod tests {
                 .needs_confirmation()
                 .is_none()
         );
+        Ok(())
+    }
+
+    #[test]
+    fn mods_commands_map() -> TestResult {
+        assert_eq!(
+            parse(&["mods", "search", "s1", "lithium", "--include-unknown"])?
+                .command
+                .to_command(),
+            Command::ModsSearch {
+                id: "s1".into(),
+                query: "lithium".into(),
+                include_unknown: true,
+                offset: 0
+            }
+        );
+        assert_eq!(
+            parse(&["mods", "install", "s1", "sodium", "--allow-prerelease"])?
+                .command
+                .to_command(),
+            Command::ModsInstall {
+                id: "s1".into(),
+                project: "sodium".into(),
+                allow_prerelease: true
+            }
+        );
+        assert!(matches!(
+            parse(&["mods", "remove", "s1", "P7dR8mSH", "--force"])?
+                .command
+                .to_command(),
+            Command::ModsRemove {
+                force: true,
+                remove_orphans: false,
+                ..
+            }
+        ));
+        assert_eq!(
+            parse(&["mods", "check", "s1"])?.command.to_command(),
+            Command::ModsCheck { id: "s1".into() }
+        );
+        assert_eq!(
+            parse(&["mods", "list", "s1"])?.command.to_command(),
+            Command::ModsList { id: "s1".into() }
+        );
+        assert!(parse(&["mods", "install", "s1"]).is_err());
         Ok(())
     }
 

@@ -66,6 +66,11 @@ fn run(cli: &Cli) -> u8 {
     {
         return logs_follow(cli, &mut client, id);
     }
+    if let Cmd::Mods { action } = &cli.command
+        && let Some(plan) = args::plan_command(action)
+    {
+        return mods_with_preview(cli, &mut client, plan);
+    }
     match client.request(cli.command.to_command()) {
         Ok(reply) => finish(cli, &reply),
         Err(e) => connection_failed(cli, &e),
@@ -161,6 +166,12 @@ fn render_response(cmd: &Cmd, response: &Response) -> String {
             },
         ) => render::render_pairing(code, *expires_unix, now_unix(), url, alt_urls),
         (_, Response::Devices(list)) => render::render_devices(list),
+        (_, Response::ModHits(list)) => render::render_mod_hits(list),
+        (_, Response::ModList(list)) => render::render_mod_list(list),
+        (_, Response::ModPlan(plan)) => render::render_mod_plan(plan),
+        (_, Response::ModRemovePlan(plan)) => render::render_mod_remove_plan(plan),
+        (_, Response::ModUpdates(list)) => render::render_mod_updates(list),
+        (_, Response::ModChange(change)) => render::render_mod_change(change),
         (_, Response::Diagnose(d)) => render::render_diagnose(d, CLI_VERSION, PROTOCOL_VERSION),
         (_, Response::Ok) => "Done.".to_owned(),
         (_, Response::Error { message, .. }) => render::sanitize(message),
@@ -208,6 +219,30 @@ fn logs_follow(cli: &Cli, client: &mut Client, id: &str) -> u8 {
             Response::Ok => return 0,
             _ => return finish(cli, &reply),
         }
+    }
+}
+
+/// Shows what an install or removal will do, asks, then runs it.
+fn mods_with_preview(cli: &Cli, client: &mut Client, plan: Command) -> u8 {
+    let preview = match client.request(plan) {
+        Ok(r) => r,
+        Err(e) => return connection_failed(cli, &e),
+    };
+    if error_of(&preview.response).is_some() {
+        return finish(cli, &preview);
+    }
+    if !cli.json {
+        println!("{}", render_response(&cli.command, &preview.response));
+    }
+    // Conflicts mean the daemon will refuse; no point asking.
+    let blocked = matches!(&preview.response, Response::ModPlan(p) if !p.conflicts.is_empty());
+    if !blocked && !cli.yes && !confirm("This changes the server's mods.") {
+        eprintln!("Cancelled.");
+        return EXIT_ERROR;
+    }
+    match client.request(cli.command.to_command()) {
+        Ok(reply) => finish(cli, &reply),
+        Err(e) => connection_failed(cli, &e),
     }
 }
 

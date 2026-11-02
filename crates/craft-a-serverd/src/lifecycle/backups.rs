@@ -137,7 +137,7 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
         }
     }
 
-    fn check_disk_space(&self) -> Result<()> {
+    pub(crate) fn check_disk_space(&self) -> Result<()> {
         let dir = self.cfg.backups_dir();
         std::fs::create_dir_all(&dir)
             .map_err(ServiceError::io("creating the backups directory"))?;
@@ -202,6 +202,18 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
     /// and start again if the server was running.
     pub async fn restore(&self, id: &str, backup_id: &str) -> Result<()> {
         let _guard = self.lock(id).await;
+        self.restore_locked(id, backup_id, true).await
+    }
+
+    /// [`Self::restore`] for a caller that holds the server lock.
+    /// `safety_backup` takes the usual pre-restore backup first; a caller that
+    /// is rolling back to a snapshot it just took has no use for one.
+    pub(crate) async fn restore_locked(
+        &self,
+        id: &str,
+        backup_id: &str,
+        safety_backup: bool,
+    ) -> Result<()> {
         let row = self.get_row(id)?;
         let backup = self
             .db
@@ -230,7 +242,9 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
         }
 
         // Safety net: the state we are about to replace.
-        self.backup_locked(id, Reason::PreRestore).await?;
+        if safety_backup {
+            self.backup_locked(id, Reason::PreRestore).await?;
+        }
         if was_running {
             self.stop_locked(id).await?;
         }

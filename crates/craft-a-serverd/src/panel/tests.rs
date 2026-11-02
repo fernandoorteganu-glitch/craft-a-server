@@ -27,6 +27,7 @@ use super::routes::{self, Access};
 use super::{PanelCore, PanelState, router};
 use crate::db::{Db, hash_secret};
 use crate::lifecycle::{DiskUsage, Env, Service, StatusProbe};
+use crate::mods::testutil::FakeTransport;
 use crate::runtime::FakeRuntime;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -68,6 +69,8 @@ struct Harness {
     clock: Arc<AtomicI64>,
     app: Router,
     next_peer: AtomicU16,
+    /// The fake Modrinth behind the service.
+    net: FakeTransport,
 }
 
 fn harness() -> Harness {
@@ -101,19 +104,24 @@ fn harness_full(tweak: impl FnOnce(&mut Config), lan_ip: Option<std::net::Ipv4Ad
         }),
         poll_interval: std::time::Duration::from_millis(10),
     };
-    let svc = Arc::new(Service::new(
-        Arc::new(cfg),
-        Db::open_in_memory().expect("db"),
-        Arc::new(FakeRuntime::new()),
-        Arc::new(NoProbe::default()),
-        env,
-    ));
+    let net = FakeTransport::new();
+    let svc = Arc::new(
+        Service::new(
+            Arc::new(cfg),
+            Db::open_in_memory().expect("db"),
+            Arc::new(FakeRuntime::new()),
+            Arc::new(NoProbe::default()),
+            env,
+        )
+        .with_modrinth(net.client()),
+    );
     let app = router(PanelState::new(Arc::clone(&svc)).with_lan_ip(lan_ip));
     Harness {
         svc,
         clock,
         app,
         next_peer: AtomicU16::new(100),
+        net,
     }
 }
 
@@ -1294,6 +1302,18 @@ const EXPECTED_ROUTES: &[(&str, Access, &[Method])] = &[
     ("/logs", Access::Session, &[Method::GET]),
     ("/logs/tail", Access::Session, &[Method::GET]),
     ("/mods", Access::Session, &[Method::GET]),
+    ("/partials/mods", Access::Session, &[Method::GET]),
+    ("/mods/updates", Access::Session, &[Method::GET]),
+    (
+        "/mods/install/{id}",
+        Access::Session,
+        &[Method::GET, Method::POST],
+    ),
+    (
+        "/mods/remove/{id}",
+        Access::Session,
+        &[Method::GET, Method::POST],
+    ),
     ("/settings/devices", Access::Session, &[Method::GET]),
     ("/api/logout", Access::Session, &[Method::POST]),
     ("/api/sessions", Access::Session, &[Method::GET]),

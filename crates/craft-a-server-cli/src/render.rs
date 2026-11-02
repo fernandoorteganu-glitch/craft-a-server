@@ -1,6 +1,9 @@
 //! Human-readable output. Pure functions: they return strings, never print.
 
-use craft_a_server_core::ctl::{BackupInfo, DeviceInfo, DiagnoseInfo, EventInfo, ServerInfo};
+use craft_a_server_core::ctl::{
+    BackupInfo, DeviceInfo, DiagnoseInfo, EventInfo, ModChangeInfo, ModHitInfo, ModInstallPlanInfo,
+    ModLineInfo, ModListInfo, ModRemovePlanInfo, ModUpdateInfo, ServerInfo,
+};
 
 /// Replaces control characters (terminal escape sequences, bells...) so text
 /// that came from a container log or a player name cannot drive the terminal.
@@ -210,6 +213,172 @@ pub fn render_backups(backups: &[BackupInfo]) -> String {
     table(&["BACKUP", "KIND", "SIZE", "CREATED", "VERIFIED"], &rows)
 }
 
+pub fn render_mod_hits(hits: &[ModHitInfo]) -> String {
+    if hits.is_empty() {
+        return "No mods found for this server's Minecraft version.".to_owned();
+    }
+    let rows: Vec<Vec<String>> = hits
+        .iter()
+        .map(|h| {
+            vec![
+                sanitize(&h.project_id),
+                sanitize(&h.title),
+                format!("server {}", sanitize(&h.server_side)),
+                h.downloads.to_string(),
+                if h.installed { "installed" } else { "" }.to_owned(),
+                sanitize(&h.description).chars().take(60).collect(),
+            ]
+        })
+        .collect();
+    table(
+        &["ID", "NAME", "SIDE", "DOWNLOADS", "", "DESCRIPTION"],
+        &rows,
+    )
+}
+
+pub fn render_mod_list(list: &ModListInfo) -> String {
+    let mut out = if list.mods.is_empty() {
+        "No mods installed through craft-a-server.".to_owned()
+    } else {
+        let rows: Vec<Vec<String>> = list
+            .mods
+            .iter()
+            .map(|m| {
+                vec![
+                    sanitize(&m.project_id),
+                    sanitize(&m.title),
+                    sanitize(&m.version_number),
+                    if m.as_dependency { "dependency" } else { "" }.to_owned(),
+                    sanitize(&m.status),
+                    sanitize(&m.required_by.join(", ")),
+                ]
+            })
+            .collect();
+        table(
+            &["ID", "NAME", "VERSION", "KIND", "STATUS", "NEEDED BY"],
+            &rows,
+        )
+    };
+    if !list.untracked.is_empty() {
+        out.push_str("\nOther jars in the mods folder (not managed here):");
+        for name in &list.untracked {
+            out.push_str("\n  ");
+            out.push_str(&sanitize(name));
+        }
+    }
+    out
+}
+
+fn mod_line(l: &ModLineInfo) -> String {
+    format!(
+        "{} {} ({}, {})",
+        sanitize(&l.title),
+        sanitize(&l.version_number),
+        sanitize(&l.version_type),
+        format_size(l.size_bytes)
+    )
+}
+
+pub fn render_mod_plan(p: &ModInstallPlanInfo) -> String {
+    let mut out = format!(
+        "{} {}\n  {}",
+        if p.replaces.is_some() {
+            "Update"
+        } else {
+            "Install"
+        },
+        mod_line(&p.target),
+        match &p.replaces {
+            Some(old) => format!("replaces {}", sanitize(old)),
+            None => format!("for Minecraft {}", sanitize(&p.mc_version)),
+        }
+    );
+    if !p.dependencies.is_empty() {
+        out.push_str("\nRequired mods that will be installed too:");
+        for d in &p.dependencies {
+            out.push_str("\n  ");
+            out.push_str(&mod_line(d));
+        }
+    }
+    for (label, list) in [
+        ("Already installed", &p.already_installed),
+        ("Optional, not installed", &p.optional),
+        ("CANNOT INSTALL", &p.conflicts),
+    ] {
+        if !list.is_empty() {
+            let joined: Vec<String> = list.iter().map(|s| sanitize(s)).collect();
+            out.push_str(&format!("\n{label}: {}", joined.join("; ")));
+        }
+    }
+    if p.server_running {
+        out.push_str(
+            "\nThe server is running: it will be stopped, backed up, restarted with the change, \
+             and rolled back if it does not come up.",
+        );
+    }
+    out
+}
+
+pub fn render_mod_remove_plan(p: &ModRemovePlanInfo) -> String {
+    let mut out = format!("Remove {}", sanitize(&p.title));
+    if !p.dependents.is_empty() {
+        out.push_str(&format!(
+            "\nWARNING: needed by {}",
+            sanitize(&p.dependents.join(", "))
+        ));
+    }
+    if !p.orphans.is_empty() {
+        out.push_str(&format!(
+            "\nNo longer needed afterwards: {}",
+            sanitize(&p.orphans.join(", "))
+        ));
+    }
+    out
+}
+
+pub fn render_mod_updates(list: &[ModUpdateInfo]) -> String {
+    if list.is_empty() {
+        return "All mods are up to date.".to_owned();
+    }
+    let rows: Vec<Vec<String>> = list
+        .iter()
+        .map(|u| {
+            vec![
+                sanitize(&u.project_id),
+                sanitize(&u.title),
+                sanitize(&u.installed_version),
+                sanitize(&u.latest_version),
+            ]
+        })
+        .collect();
+    format!(
+        "{}\nApply one with: craft-a-server mods install <server> <ID>",
+        table(&["ID", "NAME", "INSTALLED", "LATEST"], &rows)
+    )
+}
+
+pub fn render_mod_change(c: &ModChangeInfo) -> String {
+    let mut parts = Vec::new();
+    for i in &c.installed {
+        parts.push(format!("Installed {}", mod_line(i)));
+    }
+    for r in &c.removed {
+        parts.push(format!("Removed {}", sanitize(r)));
+    }
+    parts.push(
+        if c.verified {
+            "The server restarted and answered, so the change works."
+        } else {
+            "The server is stopped, so the change was not tried out. It takes effect at the next start."
+        }
+        .to_owned(),
+    );
+    if let Some(b) = &c.backup_id {
+        parts.push(format!("Backup taken first: {}", sanitize(b)));
+    }
+    parts.join("\n")
+}
+
 fn render_event(e: &EventInfo) -> String {
     let server = e.server_id.as_deref().unwrap_or("-");
     format!(
@@ -268,6 +437,8 @@ pub fn render_unreachable(
 
 #[cfg(test)]
 mod tests {
+    use craft_a_server_core::ctl::InstalledModInfo;
+
     use super::*;
 
     fn server(id: &str, state: &str, reason: Option<&str>) -> ServerInfo {
@@ -415,5 +586,147 @@ mod tests {
     fn unreachable_report_names_socket_and_error() {
         let out = render_unreachable("/run/x.sock", "No such file", "0.0.1", 1);
         assert!(out.contains("daemon not reachable at /run/x.sock: No such file"));
+    }
+
+    fn line(title: &str) -> ModLineInfo {
+        ModLineInfo {
+            project_id: "AAAAAAAA".into(),
+            title: title.into(),
+            version_number: "1.0.0".into(),
+            version_type: "release".into(),
+            size_bytes: 2048,
+            file_name: "a.jar".into(),
+            as_dependency: false,
+        }
+    }
+
+    #[test]
+    fn mod_search_results_strip_terminal_escapes() {
+        assert!(render_mod_hits(&[]).contains("No mods found"));
+        let h = ModHitInfo {
+            project_id: "AAAAAAAA".into(),
+            slug: "a".into(),
+            title: "Evil\u{1b}[31m".into(),
+            description: "d".into(),
+            author: "me".into(),
+            downloads: 42,
+            server_side: "optional".into(),
+            installed: true,
+        };
+        let out = render_mod_hits(&[h]);
+        assert!(
+            out.contains("Evil?[31m") && out.contains("installed"),
+            "{out}"
+        );
+        assert!(!out.contains('\u{1b}'));
+    }
+
+    #[test]
+    fn install_plan_lists_dependencies_conflicts_and_the_restart() {
+        let plan = ModInstallPlanInfo {
+            server_id: "s1".into(),
+            mc_version: "26.3".into(),
+            server_running: true,
+            target: line("Alpha"),
+            dependencies: vec![line("Beta Lib")],
+            already_installed: vec!["Core".into()],
+            optional: vec!["Extra".into()],
+            conflicts: vec!["Alpha cannot run together with Foe".into()],
+            replaces: None,
+            unresolved: 0,
+        };
+        let out = render_mod_plan(&plan);
+        for needle in [
+            "Install Alpha 1.0.0",
+            "Beta Lib",
+            "Already installed: Core",
+            "Optional, not installed: Extra",
+            "CANNOT INSTALL",
+            "stopped, backed up, restarted",
+        ] {
+            assert!(out.contains(needle), "{needle}: {out}");
+        }
+        let mut update = plan;
+        update.replaces = Some("Alpha 0.9".into());
+        update.server_running = false;
+        let out = render_mod_plan(&update);
+        assert!(
+            out.starts_with("Update") && out.contains("replaces Alpha 0.9"),
+            "{out}"
+        );
+        assert!(!out.contains("restarted"));
+    }
+
+    #[test]
+    fn removal_warns_about_dependents() {
+        let plan = ModRemovePlanInfo {
+            server_id: "s1".into(),
+            project_id: "BBBBBBBB".into(),
+            title: "Beta Lib".into(),
+            server_running: false,
+            dependents: vec!["Alpha".into()],
+            orphans: vec!["Tiny".into()],
+        };
+        let out = render_mod_remove_plan(&plan);
+        assert!(
+            out.contains("WARNING: needed by Alpha") && out.contains("Tiny"),
+            "{out}"
+        );
+    }
+
+    #[test]
+    fn change_results_say_whether_the_server_was_checked() {
+        let mut c = ModChangeInfo {
+            installed: vec![line("Alpha")],
+            removed: vec!["Old".into()],
+            verified: true,
+            backup_id: Some("b1".into()),
+        };
+        let out = render_mod_change(&c);
+        assert!(
+            out.contains("Installed Alpha") && out.contains("Removed Old"),
+            "{out}"
+        );
+        assert!(out.contains("answered"));
+        c.verified = false;
+        assert!(render_mod_change(&c).contains("not tried out"));
+    }
+
+    #[test]
+    fn installed_list_and_updates() {
+        assert!(
+            render_mod_list(&ModListInfo {
+                mods: vec![],
+                untracked: vec![]
+            })
+            .contains("No mods")
+        );
+        let list = ModListInfo {
+            mods: vec![InstalledModInfo {
+                project_id: "AAAAAAAA".into(),
+                title: "Alpha".into(),
+                version_number: "1".into(),
+                file_name: "a.jar".into(),
+                size_bytes: 1,
+                as_dependency: true,
+                installed_unix: 0,
+                status: "missing".into(),
+                required_by: vec!["Beta".into()],
+            }],
+            untracked: vec!["mine.jar".into()],
+        };
+        let out = render_mod_list(&list);
+        assert!(
+            out.contains("dependency") && out.contains("missing") && out.contains("mine.jar"),
+            "{out}"
+        );
+        assert!(render_mod_updates(&[]).contains("up to date"));
+        let u = ModUpdateInfo {
+            project_id: "AAAAAAAA".into(),
+            title: "Alpha".into(),
+            installed_version: "1".into(),
+            latest_version: "2".into(),
+        };
+        assert!(render_mod_updates(&[u]).contains("craft-a-server mods install"));
     }
 }

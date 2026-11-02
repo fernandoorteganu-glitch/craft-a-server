@@ -8,8 +8,8 @@ use crate::lifecycle::StatusProbe;
 use crate::panel::error::PanelError;
 use crate::panel::mapping::service_error;
 use crate::panel::views::{
-    DeviceRow, LOG_LINES, LogsBody, LogsTail, ModsBody, SettingsBody, clean_log_line, mc_address,
-    panel_url, qr_svg,
+    DeviceRow, LOG_LINES, LogsBody, LogsTail, SettingsBody, clean_log_line, mc_address, panel_url,
+    qr_svg,
 };
 use crate::panel::{AuthSession, PanelState, pages, strings as s};
 use crate::runtime::ContainerRuntime;
@@ -42,10 +42,6 @@ where
         None => Vec::new(),
     };
     Ok(Html(render(&LogsTail { lines })?).into_response())
-}
-
-pub async fn mods_page(session: AuthSession) -> Result<Response, PanelError> {
-    Ok(pages::screen(s::MODS_TITLE, "mods", &session, &ModsBody)?.into_response())
 }
 
 pub async fn settings<R, P>(

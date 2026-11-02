@@ -143,13 +143,18 @@ mod app {
         let db = Db::open(&cfg.db_path()).map_err(|e| format!("cannot open the database: {e}"))?;
         let env = Env::system().map_err(|e| format!("cannot read system information: {e}"))?;
         let rt = Arc::new(PodmanCli::new(cfg.podman_bin.clone()));
-        let service: Arc<Svc> = Arc::new(Service::new(
-            Arc::clone(&cfg),
-            db,
-            Arc::clone(&rt),
-            Arc::new(TcpProbe),
-            env,
-        ));
+        let service: Arc<Svc> = Arc::new(
+            Service::new(
+                Arc::clone(&cfg),
+                db,
+                Arc::clone(&rt),
+                Arc::new(TcpProbe),
+                env,
+            )
+            .with_modrinth(Arc::new(craft_a_serverd::mods::real_client(
+                cfg.modrinth_contact.as_deref(),
+            ))),
+        );
 
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
