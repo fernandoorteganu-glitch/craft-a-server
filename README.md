@@ -2,7 +2,7 @@
 
 Turn a mini PC into a Minecraft (Java, Fabric) server you manage from your phone — no Linux, Java or router knowledge needed.
 
-> Status: **pre-alpha**. Signed releases are on the [releases page](https://github.com/fernandoorteganu-glitch/craft-a-server/releases). So far it has only been tested on Debian 13 in virtual machines (WSL2): not yet on a real mini PC, a real home network, a real phone, or with a friend joining through the optional tunnel. See [ROADMAP.md](ROADMAP.md) and the honest list of gaps in [docs/security-review.md](docs/security-review.md). **Do not expose this to people you do not trust until an external security review has happened.** Report security problems privately: see [SECURITY.md](SECURITY.md).
+> Status: **pre-alpha**. Signed releases are on the [releases page](https://github.com/fernandoorteganu-glitch/craft-a-server/releases). So far it has only been tested on Debian 13 in virtual machines (WSL2, and a VirtualBox VM on a home Wi-Fi with a real phone and a real Minecraft client, including a forced power-off): not yet on a real mini PC, or with a friend joining over a long-running tunnel. See [ROADMAP.md](ROADMAP.md) and the honest list of gaps in [docs/security-review.md](docs/security-review.md). **Do not expose this to people you do not trust until an external security review has happened.** Report security problems privately: see [SECURITY.md](SECURITY.md).
 
 *Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.*
 
