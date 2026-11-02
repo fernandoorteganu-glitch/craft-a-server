@@ -1,14 +1,11 @@
-# craft-a-server daemon (development unit, Phase 1).
+# craft-a-server daemon unit.
 #
-# Not installed by the repo. To try it by hand, as root:
-#   install -m 0755 target/release/craft-a-serverd target/release/craft-a-server /usr/local/bin/
-#   useradd --system --create-home --home-dir /var/lib/craft-a-server \
-#           --shell /usr/sbin/nologin craft-a-server
-#   # rootless Podman needs subordinate ids and a session that survives logout:
-#   usermod --add-subuids 100000-165535 --add-subgids 100000-165535 craft-a-server
-#   loginctl enable-linger craft-a-server        # creates /run/user/<uid> at boot
-#   install -m 0644 deploy/systemd/craft-a-serverd.service /etc/systemd/system/
-#   systemctl daemon-reload && systemctl enable --now craft-a-serverd
+# Installed by deploy/install.sh (do not copy it by hand): the installer puts the
+# binaries under /opt/craft-a-server/releases/<version>, points
+# /usr/local/bin/craft-a-serverd at /opt/craft-a-server/current/craft-a-serverd,
+# creates the craft-a-server user with subuid/subgid ranges, enables linger
+# (loginctl enable-linger craft-a-server; it creates /run/user/<uid> at boot)
+# and installs this file in /etc/systemd/system.
 #
 # What was verified (Debian 13, systemd 257, Podman 5.4.2, kernel in WSL2) by
 # running the hardening properties below on a transient unit that started the

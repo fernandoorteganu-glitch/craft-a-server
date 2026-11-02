@@ -53,8 +53,8 @@ create tunnels. The panel says so in the "Claimed" state.
 ## Containment
 
 - The agent runs on the host, not in the game pod. The game pod's egress rules
-  are untouched, so the Minecraft server still cannot reach the internet or
-  the LAN.
+  are untouched: the Minecraft server still cannot reach the LAN or the host
+  (it can reach the internet, as before; see docs/security-review.md).
 - The tunnel origin must be loopback. A tunnel that forwards elsewhere is
   reported and not shown.
 - The agent is started with a cleared environment, `HOME` inside the tunnel

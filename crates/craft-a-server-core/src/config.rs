@@ -10,6 +10,24 @@ use serde::{Deserialize, Serialize};
 pub const DEFAULT_MC_PORT: u16 = 25565;
 pub const DEFAULT_PANEL_PORT: u16 = 8080;
 pub const DEFAULT_PANEL_HOSTNAME: &str = "craft-a-server.local";
+/// Where `craft-a-server update` looks for signed releases when `update_url`
+/// is not set. `OWNER` is a placeholder until the repository exists; the CLI
+/// refuses to use a URL that still contains it.
+pub const DEFAULT_UPDATE_URL: &str =
+    "https://github.com/OWNER/craft-a-server/releases/latest/download";
+
+/// True for an `https://host[:port][/path]` base address: printable ASCII
+/// without spaces, no credentials, query or fragment, at most 300 bytes.
+pub fn is_https_base_url(url: &str) -> bool {
+    let Some(rest) = url.strip_prefix("https://") else {
+        return false;
+    };
+    let host = rest.split('/').next().unwrap_or_default();
+    !host.is_empty()
+        && url.len() <= 300
+        && url.bytes().all(|b| (0x21..0x7f).contains(&b))
+        && !url.contains(['?', '#', '@', '\\'])
+}
 
 /// True for a plain DNS hostname: dot-separated labels of ASCII letters,
 /// digits and inner hyphens (no port, no scheme, no trailing dot).
@@ -80,6 +98,10 @@ pub struct Config {
     /// Contact (email or URL) sent in the `User-Agent` to Modrinth, as their
     /// API rules ask for an identifiable client. Optional.
     pub modrinth_contact: Option<String>,
+    /// Base address of signed releases for `craft-a-server update` (https
+    /// only). The command contacts it only when an administrator runs it.
+    /// Unset means [`DEFAULT_UPDATE_URL`].
+    pub update_url: Option<String>,
 }
 
 impl Default for Config {
@@ -105,6 +127,7 @@ impl Default for Config {
             pairing_code_ttl_secs: 600,
             session_ttl_secs: 30 * 24 * 3600,
             modrinth_contact: None,
+            update_url: None,
         }
     }
 }
@@ -165,6 +188,11 @@ impl Config {
             && (contact.len() > 100 || !contact.bytes().all(|b| (0x20..0x7f).contains(&b)))
         {
             return bad("modrinth_contact must be at most 100 printable ASCII characters");
+        }
+        if let Some(url) = &self.update_url
+            && !is_https_base_url(url)
+        {
+            return bad("update_url must be an https:// address without credentials or query");
         }
         if self.image.is_empty() || self.image.chars().any(char::is_whitespace) {
             return bad("image must be a non-empty reference without spaces");
@@ -281,6 +309,64 @@ session_ttl_secs = 86400
         let c = Config::from_toml("modrinth_contact = \"me@example.com\"\n")?;
         assert_eq!(c.modrinth_contact.as_deref(), Some("me@example.com"));
         assert!(Config::from_toml(&format!("modrinth_contact = \"{}\"", "a".repeat(101))).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn update_url_must_be_plain_https() -> Result<(), ConfigError> {
+        assert_eq!(Config::default().update_url, None);
+        let c = Config::from_toml(
+            "update_url = \"https://example.com/releases\"
+",
+        )?;
+        assert_eq!(
+            c.update_url.as_deref(),
+            Some("https://example.com/releases")
+        );
+        assert!(is_https_base_url(DEFAULT_UPDATE_URL));
+        for bad in [
+            "http://example.com/x",
+            "https://",
+            "https:///x",
+            "ftp://example.com",
+            "https://u:p@example.com/",
+            "https://example.com/x?a=b",
+            "https://example.com/#f",
+            "https://exa mple.com",
+            "https://example.com/a\\b",
+            "example.com",
+        ] {
+            assert!(!is_https_base_url(bad), "{bad}");
+            assert!(
+                Config::from_toml(&format!("update_url = {bad:?}")).is_err(),
+                "{bad}"
+            );
+        }
+        Ok(())
+    }
+
+    /// `deploy/config.toml.example` documents the defaults: it must parse as
+    /// is (all comments) and, with every `# key = value` line uncommented,
+    /// must equal `Config::default()` apart from the two illustrative
+    /// optional keys.
+    #[test]
+    fn the_example_config_matches_the_defaults() -> Result<(), ConfigError> {
+        let text = include_str!("../../../deploy/config.toml.example");
+        assert_eq!(Config::from_toml(text)?, Config::default());
+        let uncommented: String = text
+            .lines()
+            .filter_map(|l| l.strip_prefix("# "))
+            .filter(|l| l.split_once(" = ").is_some_and(|(k, _)| !k.contains(' ')))
+            .filter(|l| !l.starts_with("modrinth_contact") && !l.starts_with("update_url"))
+            .map(|l| {
+                format!(
+                    "{l}
+"
+                )
+            })
+            .collect();
+        assert!(uncommented.contains("mc_port = 25565"));
+        assert_eq!(Config::from_toml(&uncommented)?, Config::default());
         Ok(())
     }
 

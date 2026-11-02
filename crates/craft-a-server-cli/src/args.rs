@@ -6,6 +6,7 @@ use clap::{Parser, Subcommand};
 use craft_a_server_core::ctl::{Command, ConsoleAction};
 
 pub const DEFAULT_SOCKET: &str = "/run/craft-a-server/ctl.sock";
+pub const DEFAULT_CONFIG: &str = "/etc/craft-a-server/config.toml";
 pub const EULA_URL: &str = "https://aka.ms/MinecraftEULA";
 
 #[derive(Debug, Parser)]
@@ -24,6 +25,16 @@ pub struct Cli {
         value_name = "PATH"
     )]
     pub socket: PathBuf,
+
+    /// Daemon configuration file (only `update` reads it).
+    #[arg(
+        long,
+        global = true,
+        env = "CRAFT_A_SERVER_CONFIG",
+        default_value = DEFAULT_CONFIG,
+        value_name = "PATH"
+    )]
+    pub config: PathBuf,
 
     /// Print the daemon's raw JSON replies instead of formatted text.
     #[arg(long, global = true)]
@@ -100,12 +111,27 @@ pub enum Cmd {
         #[command(subcommand)]
         action: ModsCmd,
     },
+    /// Check for and install signed releases (never automatic; run as root).
+    Update {
+        #[command(subcommand)]
+        action: UpdateCmd,
+    },
     /// Online play: let friends outside your home network join through a
     /// playit.gg tunnel (off by default).
     Tunnel {
         #[command(subcommand)]
         action: TunnelCmd,
     },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum UpdateCmd {
+    /// Ask the release server for the newest signed release and compare it
+    /// with this version. Downloads two small files; installs nothing.
+    Check,
+    /// Download, verify (signature and SHA-256) and install the newest
+    /// release. Backs up the database first and keeps the previous version.
+    Apply,
 }
 
 #[derive(Debug, Subcommand)]
@@ -279,6 +305,9 @@ impl Cmd {
                 },
                 ModsCmd::Check { id } => Command::ModsCheck { id: id.clone() },
             },
+            // Handled locally by `main::run` before a command is built; the
+            // daemon is never asked.
+            Cmd::Update { .. } => Command::List {},
             Cmd::Tunnel { action } => match action {
                 TunnelCmd::Status | TunnelCmd::ClaimUrl => Command::TunnelStatus {},
                 // The caller shows the disclosure and asks before sending this.
@@ -408,6 +437,28 @@ mod tests {
             }
         ));
         assert!(parse(&["create", "x"]).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn update_subcommands_parse() -> TestResult {
+        assert!(matches!(
+            parse(&["update", "check"])?.command,
+            Cmd::Update {
+                action: UpdateCmd::Check
+            }
+        ));
+        let cli = parse(&["update", "apply", "--yes", "--config", "/tmp/c.toml"])?;
+        assert!(cli.yes);
+        assert_eq!(cli.config, PathBuf::from("/tmp/c.toml"));
+        assert!(matches!(
+            cli.command,
+            Cmd::Update {
+                action: UpdateCmd::Apply
+            }
+        ));
+        assert!(parse(&["update"]).is_err());
+        assert!(parse(&["update", "force"]).is_err());
         Ok(())
     }
 

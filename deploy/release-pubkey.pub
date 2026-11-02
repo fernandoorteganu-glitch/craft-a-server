@@ -1,0 +1,14 @@
+# craft-a-server release-signing public keys (minisign).
+#
+# One key per line (the second line of a `.pub` file written by `minisign -G`).
+# A release is accepted when ANY listed key verifies it; list at most two keys,
+# the current one and, during a rotation, the next one (docs/releasing.md).
+#
+# This file is the single source of truth. It is compiled into the
+# `craft-a-server` CLI (crates/craft-a-server-cli/src/update/keys.rs) and
+# copied verbatim into deploy/install.sh; a test fails if the copies differ.
+#
+# PLACEHOLDER: the line below is NOT a key. While it is here, `install.sh` and
+# `craft-a-server update` refuse to install anything (fail closed). The
+# maintainer replaces it with the real public key before the first release.
+PLACEHOLDER-NOT-A-KEY-REPLACE-WITH-RELEASE-PUBLIC-KEY

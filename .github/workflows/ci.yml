@@ -22,6 +22,24 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked
       - run: cargo test --workspace --locked
 
+  scripts:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck (installer, uninstaller, release scripts)
+        run: >-
+          shellcheck -s sh -x
+          deploy/install.sh deploy/uninstall.sh deploy/release/package.sh deploy/release/sign.sh
+          crates/craft-a-server-cli/tests/fixtures/update/regen.sh
+      - name: package.sh smoke test
+        run: |
+          mkdir -p /tmp/bin
+          echo '#!/bin/sh' > /tmp/bin/craft-a-serverd
+          cp /tmp/bin/craft-a-serverd /tmp/bin/craft-a-server
+          chmod +x /tmp/bin/*
+          sh deploy/release/package.sh 0.0.0 x86_64-unknown-linux-gnu /tmp/bin /tmp/out
+          tar -tzf /tmp/out/craft-a-server-0.0.0-x86_64-unknown-linux-gnu.tar.gz
+
   supply-chain:
     runs-on: ubuntu-24.04
     steps:

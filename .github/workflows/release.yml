@@ -1,0 +1,151 @@
+name: release
+
+# Builds Linux binaries for x86_64 and aarch64, an SBOM and SHA256SUMS, signs
+# SHA256SUMS with the maintainer's minisign key and creates a DRAFT GitHub
+# release. Maintainer steps, secret names and key rotation: docs/releasing.md.
+#
+# Pushing a tag vX.Y.Z runs the whole pipeline. A manual run (workflow_dispatch)
+# only builds and uploads artifacts: it never signs and never publishes.
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          # glibc, built on the oldest runner images we can use so the binaries
+          # run on Debian 12 (glibc 2.36) and 13 (glibc 2.41). See docs/releasing.md.
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-22.04
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-22.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Version from Cargo.toml
+        id: ver
+        run: |
+          version=$(sed -n 's/^version = "\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)"$/\1/p' Cargo.toml | head -n 1)
+          [ -n "$version" ] || { echo "no workspace version found" >&2; exit 1; }
+          if [ "${GITHUB_REF_TYPE}" = tag ] && [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "tag ${GITHUB_REF_NAME} does not match Cargo.toml version ${version}" >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+
+      - name: Build
+        env:
+          # Cheap reproducibility: no absolute build paths in the binaries.
+          RUSTFLAGS: >-
+            -D warnings
+            --remap-path-prefix=${{ github.workspace }}=/build
+            --remap-path-prefix=/home/runner/.cargo=/cargo
+            --remap-path-prefix=/home/runner/.rustup=/rustup
+        run: |
+          export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          cargo build --release --locked -p craft-a-serverd -p craft-a-server-cli
+          ls -l target/release/craft-a-serverd target/release/craft-a-server
+
+      - name: Smoke test the built CLI
+        run: |
+          target/release/craft-a-server --version
+
+      - name: Package
+        run: |
+          export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          mkdir -p dist
+          sh deploy/release/package.sh "${{ steps.ver.outputs.version }}" "${{ matrix.target }}" target/release dist
+
+      - name: SBOM (CycloneDX)
+        run: |
+          cargo install cargo-cyclonedx --locked --version 0.5.9
+          cargo cyclonedx --format json --spec-version 1.5 --target "${{ matrix.target }}"
+          for crate in craft-a-serverd craft-a-server-cli; do
+            cp "crates/${crate}/${crate}.cdx.json" "dist/${crate}-${{ steps.ver.outputs.version }}-${{ matrix.target }}.cdx.json"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  sign-and-draft:
+    name: sign and draft release
+    needs: build
+    # Never on manual runs; only for a pushed version tag.
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    # The environment `release-signing` holds the signing secrets and should
+    # require a reviewer, so a person approves every signature.
+    environment: release-signing
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+
+      - name: Install minisign
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends minisign
+
+      - name: Checksums
+        working-directory: dist
+        run: |
+          ls -l
+          sha256sum -- *.tar.gz *.cdx.json > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Sign SHA256SUMS
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
+        run: |
+          if [ -z "${MINISIGN_SECRET_KEY}" ]; then
+            echo "Secret MINISIGN_SECRET_KEY is not set: refusing to publish an unsigned release (docs/releasing.md)." >&2
+            exit 1
+          fi
+          sh deploy/release/sign.sh dist "craft-a-server ${GITHUB_REF_NAME}"
+
+      - name: Verify what will be published
+        run: |
+          cd dist
+          sha256sum -c SHA256SUMS
+          ls -l SHA256SUMS SHA256SUMS.minisig
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" --draft --verify-tag \
+            --title "craft-a-server ${GITHUB_REF_NAME}" --generate-notes \
+            dist/*.tar.gz dist/*.cdx.json dist/SHA256SUMS dist/SHA256SUMS.minisig

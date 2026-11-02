@@ -1,0 +1,44 @@
+# craft-a-server daemon configuration (/etc/craft-a-server/config.toml).
+#
+# Every setting below is shown with its built-in default and commented out, so
+# an unchanged file means "use the defaults". Unknown keys and out-of-range
+# values make the daemon refuse to start (a typo must not silently turn a
+# safety setting off). Restart after editing: sudo systemctl restart craft-a-serverd
+
+# Where servers, backups and the database live.
+# data_dir = "/var/lib/craft-a-server"
+# Control socket used by the `craft-a-server` command (root and the service user only).
+# socket_path = "/run/craft-a-server/ctl.sock"
+# podman_bin = "podman"
+# Server image. Pin a digest here if you want fully reproducible pulls.
+# image = "docker.io/itzg/minecraft-server:latest"
+
+# Minecraft port, published on this machine (the firewall rule installed by
+# install.sh was written for the value at install time; update
+# /etc/craft-a-server/host.nft if you change it).
+# mc_port = 25565
+# CPUs a server may use (0 = all) and process limit inside the container.
+# cpus = 0
+# pids_limit = 512
+# RAM kept for the OS, the daemon and the tunnel agent (MiB).
+# memory_reserve_mib = 1536
+# start_timeout_secs = 300
+# stop_timeout_secs = 60
+# max_consecutive_failures = 3
+# min_free_disk_percent = 15
+# Hour (UTC, 0-23) of the daily backup.
+# daily_backup_hour_utc = 4
+
+# The web panel (plain HTTP, local network only; never forward this port).
+# panel_port = 8080
+# panel_bind = "0.0.0.0"
+# panel_hostname = "craft-a-server.local"
+# pairing_code_ttl_secs = 600
+# session_ttl_secs = 2592000
+
+# Contact (email or URL) sent to Modrinth in the User-Agent. Optional but polite.
+# modrinth_contact = "you@example.com"
+
+# Where `craft-a-server update` looks for signed releases (https only). Nothing
+# is contacted until an administrator runs the command.
+# update_url = "https://github.com/OWNER/craft-a-server/releases/latest/download"

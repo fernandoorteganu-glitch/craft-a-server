@@ -6,6 +6,7 @@
 mod args;
 mod client;
 mod render;
+mod update;
 
 use std::io::{self, BufRead, Write};
 use std::process::ExitCode;
@@ -51,6 +52,9 @@ fn run(cli: &Cli) -> u8 {
     {
         eprintln!("Cancelled.");
         return EXIT_ERROR;
+    }
+    if let Cmd::Update { action } = &cli.command {
+        return update::command::run(&cli.config, cli.json, cli.yes, action);
     }
     if matches!(cli.command, Cmd::Diagnose) {
         return diagnose(cli);
