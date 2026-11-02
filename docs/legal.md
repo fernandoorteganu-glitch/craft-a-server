@@ -43,3 +43,19 @@ Points to confirm when reading them (from secondary sources and memory, unverifi
 - GitHub: no other project with this name apart from this repository; a repository called `forteganuez/craft-a-server` exists under another account (0 stars).
 - DNS: `craft-a-server.{com,net,org,app}` and `craftaserver.{com,net}` showed no name servers, which suggests they are unregistered. This is a hint only; confirm at a registrar.
 - Trademarks: not checked. A search of the EU (EUIPO TMview), US (USPTO) and Spanish (OEPM) registers for "craft a server" in software classes (9, 42) is still to do.
+
+### Secondary-source findings, 2026-11-02 (official pages still unread)
+
+The official pages could not be fetched; two web searches returned summaries and quotes. These are **not** the official text and one search tool noted its copy of the guidelines was old. They agree on the following, and the project already does each of these things:
+
+| Point reported | What the project does | Verified against official text? |
+|---|---|---|
+| A product name may use the word "Minecraft" only as a secondary part, never as the dominant or distinctive name | The name `craft-a-server` does not contain "Minecraft"; the word appears only descriptively ("a Minecraft Java server") | No |
+| Required wording: "NOT AN OFFICIAL MINECRAFT [PRODUCT/SERVICE/EVENT/etc.]. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT." on the product, listing, description, website and related material | Present in the README and in the footer of every panel page (`panel/strings.rs`, tested); not yet in the GitHub repository description or release notes | No |
+| Servers may be hosted and may charge for access under conditions (e.g. paid in-game currency must be for genuine copies and have no real-world value; no pay-to-win) | The project sells nothing and has no payment features; what a user does with their own server is their responsibility | No |
+| Commercial-use rules appear to have been folded into the Usage Guidelines (older sources still mention a separate document) | n/a | No |
+| Do not use Minecraft logos or assets, or imply the product is official | No Mojang assets are used; the interface has its own simple style | No |
+
+Sources consulted: the GameServerKings monetisation article, a Minecraft Forum EULA interpretation, a GitHub pull request in another project that implemented the same rules, and the search index's copy of `minecraft.net/en-us/usage-guidelines`. None is authoritative.
+
+**Still required:** a person reads `minecraft.net/en-us/eula` and `minecraft.net/en-us/usage-guidelines` and confirms the table. Also add the disclaimer to the GitHub repository description and to the release notes.
