@@ -344,7 +344,7 @@ dependencies = [
 
 [[package]]
 name = "craft-a-server-cli"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "clap",
  "craft-a-server-core",
@@ -359,7 +359,7 @@ dependencies = [
 
 [[package]]
 name = "craft-a-server-core"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "proptest",
  "serde",
@@ -370,7 +370,7 @@ dependencies = [
 
 [[package]]
 name = "craft-a-serverd"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "askama",
  "axum",
