@@ -6,6 +6,39 @@ Turn a mini PC into a Minecraft (Java, Fabric) server you manage from your phone
 
 *Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.*
 
+## Quick start (no Linux experience needed)
+
+You need a spare computer (a mini PC is perfect) with at least 4 GB of RAM and 10 GB of free disk, connected to your home router. **Installing Debian erases everything on that computer.**
+
+1. **Download Debian 13** from <https://www.debian.org/distrib/netinst> (click the "amd64" link under "Small CD or USB"; use "arm64" only for an ARM machine).
+2. **Put it on a USB stick** (8 GB or more) with [balenaEtcher](https://etcher.balena.io/) or Rufus.
+3. **Install Debian** on the mini PC: plug in the USB, start it and choose the boot menu (usually F2, F12, Esc or Del). Choose *Install* (not graphical), then follow the questions:
+   - Network: use a cable if you can.
+   - **Leave the "root password" empty.** Then your own user gets administrator rights.
+   - Create your user and a password you will remember.
+   - Disk: *Guided - use entire disk*, all files in one partition.
+   - Software selection: untick the desktop and tick only **SSH server** and **standard system utilities**.
+4. **Log in** with your user on the mini PC. Copy these lines, one block at a time, and press Enter after each:
+
+   ```sh
+   sudo apt update && sudo apt install -y curl ca-certificates
+   ```
+
+   ```sh
+   VER=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/fernandoorteganu-glitch/craft-a-server/releases/latest | sed 's|.*/v||')
+   NAME=craft-a-server-$VER-$(uname -m)-unknown-linux-gnu
+   mkdir -p ~/craft && cd ~/craft
+   for f in $NAME.tar.gz SHA256SUMS SHA256SUMS.minisig; do curl -fsSLO https://github.com/fernandoorteganu-glitch/craft-a-server/releases/download/v$VER/$f; done
+   tar -xzf $NAME.tar.gz
+   sudo sh $NAME/install.sh --release-dir . --yes
+   ```
+
+5. **Write down the pairing code and the address** that appear at the end (for example `http://craft-a-server.local`). The installer already checked the signature of what it installed.
+6. **On your phone**, connected to the same Wi-Fi, open that address in the browser, type the code and you are in. From there you create the server and add your friends. If the code expired (10 minutes), run `sudo craft-a-server pair` on the mini PC.
+7. **Friends at home** join with the mini PC's IP address in Minecraft (Java Edition, the version shown in the panel). For friends outside your home, turn on the tunnel in the panel (read what it explains first).
+
+If something fails, copy the last lines on screen into an [issue](https://github.com/fernandoorteganu-glitch/craft-a-server/issues). To check the download yourself instead of trusting the installer, use the detailed steps below.
+
 ## Install (Debian 12 or 13, x86_64 or aarch64)
 
 Requirements: a machine with systemd, 4 GB RAM or more, 10 GB free disk, on your home network. Debian 12 ships Podman 4.3, which is too old; enable bookworm-backports for Podman 4.4 or newer first. Only Debian 13 with Podman 5.4 has been tested.
