@@ -31,6 +31,12 @@ if [ -f "$T/k.key" ]; then
   ok "encrypted test key generated via stdin"
   { echo "# test"; sed -n 2p "$T/k.pub"; } > "$T/deploy/release-pubkey.pub"
   MINISIGN_SECRET_KEY=$(cat "$T/k.key") MINISIGN_PASSWORD='correct horse' sh "$T/deploy/release/sign.sh" "$T/s" "test release" && ok "signs an encrypted key from env + verifies against the pubkey file" || bad "sign failed"
+  # pasted through a web form: CRLF line endings, then only the key line
+  cr=$(printf '\r')
+  crlf=$(sed "s/\$/$cr/" "$T/k.key")
+  MINISIGN_SECRET_KEY=$crlf MINISIGN_PASSWORD='correct horse' sh "$T/deploy/release/sign.sh" "$T/s" >/dev/null 2>&1 && ok "key with CRLF line endings signs" || bad "CRLF key failed"
+  MINISIGN_SECRET_KEY=$(sed -n 2p "$T/k.key") MINISIGN_PASSWORD='correct horse' sh "$T/deploy/release/sign.sh" "$T/s" >/dev/null 2>&1 && ok "key without its comment line signs" || bad "headerless key failed"
+  MINISIGN_SECRET_KEY='not a key' MINISIGN_PASSWORD='correct horse' sh "$T/deploy/release/sign.sh" "$T/s" >"$T/o.txt" 2>&1 && bad "garbage key accepted" || { grep -q 'whole .key file' "$T/o.txt" && ok "garbage key fails with a clear hint" || bad "no hint for a bad key"; }
   MINISIGN_SECRET_KEY=$(cat "$T/k.key") MINISIGN_PASSWORD='wrong' sh "$T/deploy/release/sign.sh" "$T/s" >/dev/null 2>&1 && bad "wrong password accepted" || ok "wrong password fails"
   [ ! -f "$T/s/SHA256SUMS.minisig" ] && ok "  no signature left behind after failure" || bad "  stale signature left"
   # key not in repo

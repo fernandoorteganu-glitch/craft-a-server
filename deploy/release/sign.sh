@@ -33,11 +33,24 @@ esac
 umask 077
 keyfile=$(mktemp)
 trap 'rm -f "$keyfile"' EXIT
-printf '%s\n' "$MINISIGN_SECRET_KEY" >"$keyfile"
+# A secret pasted into a web form can arrive with Windows line endings, blank
+# lines or without its first (comment) line. Normalise those, nothing else.
+cr=$(printf '\r')
+keytext=$(printf '%s\n' "$MINISIGN_SECRET_KEY" | tr -d "$cr" | sed -e '/^[[:space:]]*$/d')
+case $(printf '%s\n' "$keytext" | sed -n 1p) in
+"untrusted comment:"*) ;;
+*) keytext="untrusted comment: minisign encrypted secret key
+$keytext" ;;
+esac
+printf '%s\n' "$keytext" >"$keyfile"
 
 rm -f "$dir/SHA256SUMS.minisig"
-printf '%s\n' "$MINISIGN_PASSWORD" |
-  minisign -S -s "$keyfile" -m "$dir/SHA256SUMS" -x "$dir/SHA256SUMS.minisig" -t "$comment" >/dev/null
+if ! printf '%s\n' "$MINISIGN_PASSWORD" |
+  minisign -S -s "$keyfile" -m "$dir/SHA256SUMS" -x "$dir/SHA256SUMS.minisig" -t "$comment" >/dev/null; then
+  rm -f "$dir/SHA256SUMS.minisig"
+  echo "sign.sh: minisign could not sign. MINISIGN_SECRET_KEY must be the whole .key file (the comment line and the key line) and MINISIGN_PASSWORD its password." >&2
+  exit 1
+fi
 
 ok=0
 for key in $keys; do
