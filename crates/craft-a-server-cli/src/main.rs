@@ -299,5 +299,9 @@ fn connection_failed(cli: &Cli, error: &ClientError) -> u8 {
             eprintln!("error: lost the connection to the daemon: {error}");
             EXIT_ERROR
         }
+        ClientError::Ambiguous(_) => {
+            eprintln!("error: {error}");
+            EXIT_ERROR
+        }
     }
 }

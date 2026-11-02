@@ -4,7 +4,7 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 
 use craft_a_server_core::ctl::{
-    Command, MAX_REPLY_BYTES, Reply, Request, Response, encode_line, parse_reply,
+    Command, MAX_REPLY_BYTES, Reply, Request, Response, ServerInfo, encode_line, parse_reply,
 };
 
 #[derive(Debug)]
@@ -15,6 +15,8 @@ pub enum ClientError {
     Io(io::Error),
     /// The daemon said something we cannot understand.
     Protocol(String),
+    /// The server name that was typed matches more than one server.
+    Ambiguous(String),
 }
 
 impl std::fmt::Display for ClientError {
@@ -22,7 +24,53 @@ impl std::fmt::Display for ClientError {
         match self {
             ClientError::Unreachable(e) | ClientError::Io(e) => write!(f, "{e}"),
             ClientError::Protocol(m) => write!(f, "unexpected reply from the daemon: {m}"),
+            ClientError::Ambiguous(name) => write!(
+                f,
+                "more than one server is called \"{name}\"; use its id (see `craft-a-server list`)"
+            ),
         }
+    }
+}
+
+/// The server reference (an id, or a name typed by a person) inside a command.
+/// Other ids, such as a paired device's, are not server references.
+fn server_ref_mut(cmd: &mut Command) -> Option<&mut String> {
+    match cmd {
+        Command::Start { id }
+        | Command::Stop { id }
+        | Command::Restart { id }
+        | Command::Reset { id }
+        | Command::Delete { id }
+        | Command::Status { id }
+        | Command::BackupCreate { id }
+        | Command::BackupList { id }
+        | Command::BackupRestore { id, .. }
+        | Command::Console { id, .. }
+        | Command::LogsTail { id, .. }
+        | Command::LogsFollow { id }
+        | Command::ModsSearch { id, .. }
+        | Command::ModsList { id }
+        | Command::ModsPlan { id, .. }
+        | Command::ModsInstall { id, .. }
+        | Command::ModsRemovePlan { id, .. }
+        | Command::ModsRemove { id, .. }
+        | Command::ModsCheck { id, .. } => Some(id),
+        _ => None,
+    }
+}
+
+/// Which server a typed reference means: an exact id always wins, then a name
+/// that exactly one server has. `Ok(None)` means nothing matched (the daemon
+/// then reports "no such server"); several name matches are ambiguous.
+fn pick_server(servers: &[ServerInfo], reference: &str) -> Result<Option<String>, ClientError> {
+    if servers.iter().any(|s| s.id == reference) {
+        return Ok(Some(reference.to_owned()));
+    }
+    let mut named = servers.iter().filter(|s| s.name == reference);
+    match (named.next(), named.next()) {
+        (Some(only), None) => Ok(Some(only.id.clone())),
+        (Some(_), Some(_)) => Err(ClientError::Ambiguous(reference.to_owned())),
+        (None, _) => Ok(None),
     }
 }
 
@@ -56,8 +104,22 @@ impl Client {
         self.read_reply()
     }
 
-    /// Sends `cmd` (a streaming command) without reading anything yet.
-    pub fn send(&mut self, cmd: Command) -> Result<(), ClientError> {
+    /// Sends `cmd` (a streaming command) without reading anything yet. A server
+    /// given by name is first turned into its id.
+    pub fn send(&mut self, mut cmd: Command) -> Result<(), ClientError> {
+        if let Some(reference) = server_ref_mut(&mut cmd) {
+            let wanted = reference.clone();
+            self.send_raw(Command::List {})?;
+            if let Response::Servers(servers) = self.read_reply()?.response
+                && let Some(id) = pick_server(&servers, &wanted)?
+            {
+                *reference = id;
+            }
+        }
+        self.send_raw(cmd)
+    }
+
+    fn send_raw(&mut self, cmd: Command) -> Result<(), ClientError> {
         let id = self.next_id;
         self.next_id += 1;
         let line = encode_line(&Request { id: Some(id), cmd });
@@ -218,6 +280,88 @@ mod tests {
         assert_eq!(read_line_bounded(&mut r, 10)?, None);
         let mut long = Cursor::new(vec![b'a'; 100]);
         assert!(read_line_bounded(&mut long, 10).is_err());
+        Ok(())
+    }
+
+    fn server(id: &str, name: &str) -> ServerInfo {
+        ServerInfo {
+            id: id.into(),
+            name: name.into(),
+            mc_version: "26.3".into(),
+            state: "stopped".into(),
+            reason: None,
+            port: 25565,
+            created_unix: 0,
+        }
+    }
+
+    #[test]
+    fn a_server_is_found_by_id_or_by_a_unique_name() -> TestResult {
+        let all = [server("s1", "survival"), server("s2", "creative")];
+        assert_eq!(pick_server(&all, "s2")?, Some("s2".into()));
+        assert_eq!(pick_server(&all, "survival")?, Some("s1".into()));
+        assert_eq!(pick_server(&all, "nope")?, None);
+        Ok(())
+    }
+
+    #[test]
+    fn an_id_wins_over_a_name_that_looks_like_it() -> TestResult {
+        let all = [server("s1", "s2"), server("s2", "other")];
+        assert_eq!(pick_server(&all, "s2")?, Some("s2".into()));
+        Ok(())
+    }
+
+    #[test]
+    fn a_name_shared_by_two_servers_is_refused() {
+        let all = [server("s1", "world"), server("s2", "world")];
+        assert!(matches!(
+            pick_server(&all, "world"),
+            Err(ClientError::Ambiguous(_))
+        ));
+    }
+
+    #[test]
+    fn a_typed_name_is_sent_to_the_daemon_as_the_id() -> TestResult {
+        let list = encode_line(&Reply {
+            id: Some(1),
+            response: Response::Servers(vec![server("s1", "survival")]),
+        });
+        let ok = encode_line(&Reply {
+            id: Some(2),
+            response: Response::Ok,
+        });
+        let sink = Sink::default();
+        let mut client = Client::from_parts(
+            Box::new(Cursor::new(format!("{list}{ok}").into_bytes())),
+            Box::new(sink.clone()),
+        );
+        client.request(Command::Start {
+            id: "survival".into(),
+        })?;
+        let sent = String::from_utf8(sink.0.lock().map_err(|_| "poisoned")?.clone())?;
+        let mut lines = sent.lines();
+        assert_eq!(lines.next(), Some("{\"id\":1,\"cmd\":{\"type\":\"list\"}}"));
+        assert_eq!(
+            lines.next(),
+            Some("{\"id\":2,\"cmd\":{\"type\":\"start\",\"id\":\"s1\"}}")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn a_device_id_is_not_treated_as_a_server_name() -> TestResult {
+        let ok = encode_line(&Reply {
+            id: Some(1),
+            response: Response::Ok,
+        });
+        let sink = Sink::default();
+        let mut client = Client::from_parts(
+            Box::new(Cursor::new(ok.into_bytes())),
+            Box::new(sink.clone()),
+        );
+        client.request(Command::DevicesRevoke { id: "d1".into() })?;
+        let sent = String::from_utf8(sink.0.lock().map_err(|_| "poisoned")?.clone())?;
+        assert_eq!(sent.lines().count(), 1, "no list lookup for a device id");
         Ok(())
     }
 

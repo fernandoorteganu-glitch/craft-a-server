@@ -120,7 +120,7 @@ in a browser and accept (code {}).",
         TunnelState::Claimed => {
             out.push_str(&format!(
                 "
-Linked to playit.gg, waiting for a Minecraft Java tunnel. In the playit                  dashboard create one that forwards to 127.0.0.1:{}.",
+Linked to playit.gg, waiting for a Minecraft Java tunnel. In the playit dashboard create one that forwards to 127.0.0.1:{}.",
                 info.local_port
             ));
             if !info.enabled {
