@@ -163,10 +163,11 @@ mod tests {
     }
 
     #[test]
-    fn the_shipped_build_cannot_update_yet() {
-        // Placeholder key and placeholder address: both stop the command.
+    fn the_shipped_build_has_a_key_and_an_address() {
+        // No config file: the built-in https address and the embedded release
+        // key are used, so the settings validate (on a supported architecture).
         let dir = tempfile::tempdir().map(|d| d.path().join("absent.toml"));
         let result = dir.map_err(|e| e.to_string()).and_then(|p| settings(&p));
-        assert!(result.is_err());
+        assert!(result.is_ok(), "{result:?}");
     }
 }

@@ -132,9 +132,13 @@ fn check_reports_available_current_and_older() -> TestResult {
 fn settings_fail_closed() {
     let key = || keys();
     assert_eq!(
-        Settings::new(BASE, keys::embedded_keys(), "x86_64", "0.0.1").err(),
+        Settings::new(BASE, Err(KeyError::Placeholder), "x86_64", "0.0.1").err(),
         Some(UpdateError::Keys(KeyError::Placeholder)),
-        "the shipped placeholder key must stop updates"
+        "a placeholder key must stop updates"
+    );
+    assert!(
+        Settings::new(BASE, keys::embedded_keys(), "x86_64", "0.0.1").is_ok(),
+        "the shipped key must be accepted"
     );
     assert_eq!(
         Settings::new("http://updates.example.test/x", key(), "x86_64", "0.0.1").err(),

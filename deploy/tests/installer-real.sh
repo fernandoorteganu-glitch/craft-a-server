@@ -23,7 +23,7 @@ KEYA=$(sed -n 2p "$T/a.pub")
 mkdir -p "$T/src/systemd"
 cp "$REPO/deploy/uninstall.sh" "$REPO/deploy/config.toml.example" "$T/src/"
 cp "$REPO/deploy/systemd/craft-a-serverd.service" "$T/src/systemd/"
-sed "s|^PLACEHOLDER-NOT-A-KEY.*\$|$KEYA|" "$REPO/deploy/install.sh" > "$T/src/install.sh"
+sed "s|^RW[A-Za-z0-9+/=]\{54\}\$|$KEYA|" "$REPO/deploy/install.sh" > "$T/src/install.sh"
 TRIPLE=$(uname -m)-unknown-linux-gnu
 
 mkrelease() { # version outdir daemon-binary

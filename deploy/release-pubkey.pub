@@ -8,7 +8,4 @@
 # `craft-a-server` CLI (crates/craft-a-server-cli/src/update/keys.rs) and
 # copied verbatim into deploy/install.sh; a test fails if the copies differ.
 #
-# PLACEHOLDER: the line below is NOT a key. While it is here, `install.sh` and
-# `craft-a-server update` refuse to install anything (fail closed). The
-# maintainer replaces it with the real public key before the first release.
-PLACEHOLDER-NOT-A-KEY-REPLACE-WITH-RELEASE-PUBLIC-KEY
+RWQMea9ufMd0zqv+KCL7vaMIHtVE9VxtLwi1AZDCYPFEx5Rvu/aD0VGm

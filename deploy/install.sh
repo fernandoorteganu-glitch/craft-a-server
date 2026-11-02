@@ -28,10 +28,10 @@ umask 022
 
 # --- trusted release keys -----------------------------------------------------
 # Copy of deploy/release-pubkey.pub (the CLI embeds the same lines; a test
-# compares them). While the placeholder is here, installation is refused.
+# compares them). A line starting with PLACEHOLDER makes installation refuse everything.
 # BEGIN EMBEDDED RELEASE KEYS
 RELEASE_KEYS='
-PLACEHOLDER-NOT-A-KEY-REPLACE-WITH-RELEASE-PUBLIC-KEY
+RWQMea9ufMd0zqv+KCL7vaMIHtVE9VxtLwi1AZDCYPFEx5Rvu/aD0VGm
 '
 # END EMBEDDED RELEASE KEYS
 

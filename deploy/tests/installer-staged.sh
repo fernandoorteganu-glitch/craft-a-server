@@ -21,7 +21,7 @@ mkdir -p "$T/src/systemd"
 cp "$REPO/deploy/uninstall.sh" "$REPO/deploy/config.toml.example" "$T/src/"
 cp "$REPO/deploy/systemd/craft-a-serverd.service" "$T/src/systemd/"
 # patched copy: only the line holding the placeholder key differs
-sed "s|^PLACEHOLDER-NOT-A-KEY.*\$|$KEYA|" "$REPO/deploy/install.sh" > "$T/src/install.sh"
+sed "s|^RW[A-Za-z0-9+/=]\{54\}\$|$KEYA|" "$REPO/deploy/install.sh" > "$T/src/install.sh"
 n=$(diff "$REPO/deploy/install.sh" "$T/src/install.sh" | grep -c '^>')
 [ "$n" = 1 ] && ok "patched installer differs in exactly the key line" || bad "patched installer differs in $n lines"
 chmod +x "$T/src/install.sh"
@@ -49,8 +49,8 @@ D=$T/root
 I="sh $T/src/install.sh"
 
 echo "== refusals"
-expect_fail "placeholder key in the shipped installer refuses" sh "$REPO/deploy/install.sh" --release-dir "$T/rel1" --destdir "$T/x0" --yes
-grep -q "placeholder" "$T/out" && ok "  reason mentions placeholder" || bad "  wrong reason: $(cat $T/out)"
+expect_fail "a release signed by an untrusted (test) key is refused by the shipped installer" sh "$REPO/deploy/install.sh" --release-dir "$T/rel1" --destdir "$T/x0" --yes
+grep -qi "signature" "$T/out" && ok "  reason is the signature" || bad "  wrong reason: $(cat "$T/out")"
 [ ! -e "$T/x0/opt" ] && ok "  nothing created after placeholder refusal" || bad "  created files after refusal"
 cp -r "$T/rel1" "$T/relU"; rm "$T/relU/SHA256SUMS.minisig"
 expect_fail "unsigned release refused" $I --release-dir "$T/relU" --destdir "$T/x1" --yes

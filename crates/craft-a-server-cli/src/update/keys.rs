@@ -60,6 +60,7 @@ pub fn embedded_keys() -> Result<Vec<PublicKey>, KeyError> {
 mod tests {
     use super::*;
 
+    const RELEASE_KEY: &str = "RWQMea9ufMd0zqv+KCL7vaMIHtVE9VxtLwi1AZDCYPFEx5Rvu/aD0VGm";
     const KEY_A: &str = "RWSQsT7Om6zhNSxkirwHBEICQ+idTTZE2c7HeaM+olftyzoQooU2KdQx";
 
     #[test]
@@ -76,10 +77,9 @@ mod tests {
     }
 
     #[test]
-    fn the_shipped_file_is_a_placeholder_until_the_maintainer_replaces_it() {
-        // Documents the current state; once a real key is committed this test
-        // is meant to be updated together with the file (see docs/releasing.md).
-        assert_eq!(embedded_keys().err(), Some(KeyError::Placeholder));
+    fn the_shipped_file_holds_exactly_the_published_release_key() {
+        assert_eq!(embedded_keys().map(|k| k.len()), Ok(1));
+        assert_eq!(key_lines(EMBEDDED), [RELEASE_KEY]);
     }
 
     #[test]
