@@ -792,6 +792,8 @@ print_first_run() {
     info "  5. Remove (keeps your data): sudo sh $PREFIX/current/uninstall.sh"
     info ""
     info "The panel uses plain HTTP on your home network. Do not forward its port on your router."
+    info ""
+    info "Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft."
 }
 
 main

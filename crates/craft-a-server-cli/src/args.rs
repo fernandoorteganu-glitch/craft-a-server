@@ -13,7 +13,8 @@ pub const EULA_URL: &str = "https://aka.ms/MinecraftEULA";
 #[command(
     name = "craft-a-server",
     version,
-    about = "Manage Minecraft servers on your craft-a-server mini PC"
+    about = "Manage Minecraft servers on your craft-a-server mini PC",
+    after_help = "Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft."
 )]
 pub struct Cli {
     /// Control socket of the daemon.
