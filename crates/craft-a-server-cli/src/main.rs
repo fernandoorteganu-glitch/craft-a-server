@@ -172,6 +172,13 @@ fn render_response(cmd: &Cmd, response: &Response) -> String {
         (_, Response::ModRemovePlan(plan)) => render::render_mod_remove_plan(plan),
         (_, Response::ModUpdates(list)) => render::render_mod_updates(list),
         (_, Response::ModChange(change)) => render::render_mod_change(change),
+        (
+            Cmd::Tunnel {
+                action: args::TunnelCmd::ClaimUrl,
+            },
+            Response::Tunnel(info),
+        ) => render::render_claim_url(info),
+        (_, Response::Tunnel(info)) => render::render_tunnel(info),
         (_, Response::Diagnose(d)) => render::render_diagnose(d, CLI_VERSION, PROTOCOL_VERSION),
         (_, Response::Ok) => "Done.".to_owned(),
         (_, Response::Error { message, .. }) => render::sanitize(message),

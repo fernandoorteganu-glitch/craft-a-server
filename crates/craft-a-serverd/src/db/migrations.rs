@@ -83,4 +83,20 @@ pub const MIGRATIONS: &[&str] = &[
             REFERENCES mods(server_id, project_id) ON DELETE CASCADE
     );
     "#,
+    // v5: the optional playit.gg tunnel. One row; off by default. Adds a
+    // table only, so the previous release still opens the file. The agent's
+    // secret is never stored here.
+    r#"
+    CREATE TABLE tunnel (
+        id           INTEGER PRIMARY KEY CHECK (id = 1),
+        enabled      INTEGER NOT NULL DEFAULT 0,
+        state        TEXT NOT NULL DEFAULT 'not_configured',
+        claim_url    TEXT,
+        address      TEXT,
+        reason       TEXT,
+        consent_unix INTEGER,
+        updated_unix INTEGER NOT NULL DEFAULT 0
+    );
+    INSERT INTO tunnel (id) VALUES (1);
+    "#,
 ];

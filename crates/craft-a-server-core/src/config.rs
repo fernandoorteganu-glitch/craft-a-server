@@ -183,6 +183,12 @@ impl Config {
     pub fn backups_dir(&self) -> PathBuf {
         self.data_dir.join("backups")
     }
+
+    /// Private directory of the optional playit.gg tunnel (agent binaries,
+    /// its secret, its socket).
+    pub fn tunnel_dir(&self) -> PathBuf {
+        self.data_dir.join("tunnel")
+    }
 }
 
 #[cfg(test)]

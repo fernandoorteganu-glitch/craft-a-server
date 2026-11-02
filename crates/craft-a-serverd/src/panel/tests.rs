@@ -29,6 +29,9 @@ use crate::db::{Db, hash_secret};
 use crate::lifecycle::{DiskUsage, Env, Service, StatusProbe};
 use crate::mods::testutil::FakeTransport;
 use crate::runtime::FakeRuntime;
+use crate::tunnel::{
+    FakeFetch, Platform, Release, Timings, TunnelDirs, TunnelManager, TunnelSettings,
+};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -84,6 +87,19 @@ fn harness_with(tweak: impl FnOnce(&mut Config)) -> Harness {
 const LAN_IP: std::net::Ipv4Addr = std::net::Ipv4Addr::new(192, 168, 1, 50);
 
 fn harness_full(tweak: impl FnOnce(&mut Config), lan_ip: Option<std::net::Ipv4Addr>) -> Harness {
+    harness_build(tweak, lan_ip, true)
+}
+
+/// A panel over a service that has no tunnel manager.
+fn harness_without_tunnel() -> Harness {
+    harness_build(|_| {}, Some(LAN_IP), false)
+}
+
+fn harness_build(
+    tweak: impl FnOnce(&mut Config),
+    lan_ip: Option<std::net::Ipv4Addr>,
+    with_tunnel: bool,
+) -> Harness {
     let mut cfg = Config {
         data_dir: std::env::temp_dir(),
         ..Config::default()
@@ -105,16 +121,35 @@ fn harness_full(tweak: impl FnOnce(&mut Config), lan_ip: Option<std::net::Ipv4Ad
         poll_interval: std::time::Duration::from_millis(10),
     };
     let net = FakeTransport::new();
-    let svc = Arc::new(
-        Service::new(
-            Arc::new(cfg),
-            Db::open_in_memory().expect("db"),
-            Arc::new(FakeRuntime::new()),
-            Arc::new(NoProbe::default()),
-            env,
-        )
-        .with_modrinth(net.client()),
-    );
+    let db = Db::open_in_memory().expect("db");
+    // Online play with a fake network: the panel tests never run the
+    // supervisor, they only look at the stored state and the buttons.
+    let tunnel = Arc::new(TunnelManager::new(
+        TunnelSettings {
+            dirs: TunnelDirs::new(&cfg.tunnel_dir()),
+            mc_port: cfg.mc_port,
+            release: Release::pinned(),
+            platform: Some(Platform::LinuxAmd64),
+            rundata_url: "https://api.playit.invalid/agents/rundata".to_owned(),
+            timings: Timings::default(),
+        },
+        db.clone(),
+        Arc::new(FakeFetch::default()),
+        Arc::clone(&env.now_unix),
+    ));
+    let service = Service::new(
+        Arc::new(cfg),
+        db,
+        Arc::new(FakeRuntime::new()),
+        Arc::new(NoProbe::default()),
+        env,
+    )
+    .with_modrinth(net.client());
+    let svc = Arc::new(if with_tunnel {
+        service.with_tunnel(tunnel)
+    } else {
+        service
+    });
     let app = router(PanelState::new(Arc::clone(&svc)).with_lan_ip(lan_ip));
     Harness {
         svc,
@@ -1314,6 +1349,14 @@ const EXPECTED_ROUTES: &[(&str, Access, &[Method])] = &[
         Access::Session,
         &[Method::GET, Method::POST],
     ),
+    ("/online", Access::Session, &[Method::GET]),
+    ("/partials/online", Access::Session, &[Method::GET]),
+    (
+        "/online/enable",
+        Access::Session,
+        &[Method::GET, Method::POST],
+    ),
+    ("/online/disable", Access::Session, &[Method::POST]),
     ("/settings/devices", Access::Session, &[Method::GET]),
     ("/api/logout", Access::Session, &[Method::POST]),
     ("/api/sessions", Access::Session, &[Method::GET]),
@@ -1747,4 +1790,5 @@ async fn healthz_is_public_and_tiny() -> TestResult {
     Ok(())
 }
 
+mod online;
 mod screens;

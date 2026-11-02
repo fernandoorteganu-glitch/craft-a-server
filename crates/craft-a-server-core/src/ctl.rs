@@ -15,8 +15,10 @@
 
 use serde::{Deserialize, Serialize};
 
+pub use crate::tunnel::TunnelInfo;
+
 /// Version reported by `ping`; the CLI warns when it differs from its own.
-pub const PROTOCOL_VERSION: u32 = 2;
+pub const PROTOCOL_VERSION: u32 = 3;
 
 /// Longest accepted request line, including the newline.
 pub const MAX_REQUEST_BYTES: usize = 64 * 1024;
@@ -143,6 +145,19 @@ pub enum Command {
     ModsCheck {
         id: String,
     },
+    /// State of the optional playit.gg tunnel ("online play").
+    TunnelStatus {},
+    /// Turn online play on. `confirm` must be true: the caller has shown the
+    /// user what is shared with playit.gg (see `tunnel::disclosure`).
+    TunnelEnable {
+        confirm: bool,
+    },
+    /// Turn online play off and stop the agent. With `forget_claim` the saved
+    /// link to the playit.gg account is deleted as well.
+    TunnelDisable {
+        #[serde(default)]
+        forget_claim: bool,
+    },
 }
 
 /// One request line.
@@ -168,6 +183,8 @@ pub enum ErrorKind {
     Memory,
     /// A mod operation failed or was rolled back; the message says why and is safe to show.
     Mods,
+    /// The tunnel could not be changed; the message says why and is safe to show.
+    Tunnel,
     Internal,
 }
 
@@ -182,6 +199,7 @@ impl ErrorKind {
             ErrorKind::DiskLow => "disk_low",
             ErrorKind::Memory => "memory",
             ErrorKind::Mods => "mods",
+            ErrorKind::Tunnel => "tunnel",
             ErrorKind::Internal => "internal",
         }
     }
@@ -397,6 +415,7 @@ pub enum Response {
     ModRemovePlan(ModRemovePlanInfo),
     ModUpdates(Vec<ModUpdateInfo>),
     ModChange(ModChangeInfo),
+    Tunnel(TunnelInfo),
     Error {
         kind: ErrorKind,
         message: String,
@@ -528,6 +547,9 @@ mod tests {
                 remove_orphans: true,
             },
             Command::ModsCheck { id: id() },
+            Command::TunnelStatus {},
+            Command::TunnelEnable { confirm: true },
+            Command::TunnelDisable { forget_claim: true },
         ]
     }
 
@@ -685,6 +707,17 @@ mod tests {
                 verified: true,
                 backup_id: Some("b".into()),
             }),
+            Response::Tunnel(TunnelInfo {
+                enabled: true,
+                state: crate::tunnel::TunnelState::Claiming {
+                    code: "a1b2c3d4e5".into(),
+                    url: "https://playit.gg/claim/a1b2c3d4e5".into(),
+                },
+                consent_unix: Some(1),
+                updated_unix: 2,
+                agent_version: "1.2.0".into(),
+                local_port: 25565,
+            }),
             Response::Error {
                 kind: ErrorKind::WrongState,
                 message: "nope".into(),
@@ -729,6 +762,7 @@ mod tests {
             ErrorKind::DiskLow,
             ErrorKind::Memory,
             ErrorKind::Mods,
+            ErrorKind::Tunnel,
             ErrorKind::Internal,
         ] {
             assert_eq!(
@@ -736,6 +770,21 @@ mod tests {
                 format!("\"{}\"", kind.as_str())
             );
         }
+        Ok(())
+    }
+
+    #[test]
+    fn tunnel_commands_have_stable_wire_names() -> TestResult {
+        assert_eq!(
+            parse_request(r#"{"cmd":{"type":"tunnel_enable","confirm":true}}"#)?.cmd,
+            Command::TunnelEnable { confirm: true }
+        );
+        assert_eq!(
+            parse_request(r#"{"cmd":{"type":"tunnel_status"}}"#)?.cmd,
+            Command::TunnelStatus {}
+        );
+        // The confirmation has no default: leaving it out is an error.
+        assert!(parse_request(r#"{"cmd":{"type":"tunnel_enable"}}"#).is_err());
         Ok(())
     }
 

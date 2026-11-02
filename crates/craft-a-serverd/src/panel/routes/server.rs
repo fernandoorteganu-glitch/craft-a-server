@@ -46,10 +46,19 @@ where
         }
         None => None,
     };
+    // The public address shows on the home card once online play is running.
+    let online_address = match service.tunnel_info() {
+        Ok(info) if info.enabled => match info.state {
+            craft_a_server_core::tunnel::TunnelState::Running { address } => Some(address),
+            _ => None,
+        },
+        _ => None,
+    };
     render(&CardBody {
         server,
         banner,
         csrf_token: &session.csrf_token,
+        online_address,
     })
 }
 

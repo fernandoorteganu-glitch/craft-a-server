@@ -1,0 +1,49 @@
+{% import "macros.html" as m %}
+<section id="online-status" class="card" hx-get="/partials/online" hx-trigger="every 3s" hx-swap="outerHTML">
+{% if !available %}
+<p>{{ crate::panel::strings::ONLINE_UNAVAILABLE }}</p>
+{% else %}
+<h2>{{ crate::panel::strings::ONLINE_STATE }}</h2>
+<p><span class="state state-{{ phase }}">{{ label }}</span> <span class="note">{{ crate::panel::strings::ONLINE_AGENT }} {{ agent_version }}</span></p>
+{% if phase == "preparing" %}
+<p class="note">{{ crate::panel::strings::ONLINE_PREPARING_HELP }}</p>
+{% endif %}
+{% if let Some(url) = claim_url %}
+<p>{{ crate::panel::strings::ONLINE_CLAIM_HELP }}</p>
+<dl class="facts">
+<dt>{{ crate::panel::strings::ONLINE_CLAIM_LINK }}</dt>
+<dd><code>{{ url }}</code></dd>
+{% if let Some(code) = claim_code %}
+<dt>{{ crate::panel::strings::ONLINE_CLAIM_CODE }}</dt>
+<dd><code>{{ code }}</code></dd>
+{% endif %}
+</dl>
+<p><a class="btn" href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ crate::panel::strings::ONLINE_CLAIM_OPEN }}</a></p>
+{% endif %}
+{% if phase == "claimed" %}
+<p>{{ crate::panel::strings::ONLINE_CLAIMED_HELP }} <code>127.0.0.1:{{ local_port }}</code>.</p>
+{% endif %}
+{% if let Some(address) = address %}
+<dl class="facts">
+<dt>{{ crate::panel::strings::ONLINE_ADDRESS }}</dt>
+<dd><code>{{ address }}</code></dd>
+</dl>
+<p class="note">{{ crate::panel::strings::ONLINE_ADDRESS_HELP }}</p>
+{% endif %}
+{% if let Some(reason) = error %}
+<p class="alert" role="alert">{{ reason }}</p>
+{% if enabled %}<p class="note">{{ crate::panel::strings::ONLINE_ERROR_RETRY }}</p>{% endif %}
+{% endif %}
+{% if !enabled && keeps_link %}
+<p class="note">{{ crate::panel::strings::ONLINE_OFF_KEPT }}</p>
+{% endif %}
+<div class="actions">
+{% if enabled %}
+<form method="post" action="/online/disable">{{ m::csrf_field(csrf_token) }}<button type="submit" class="btn btn-secondary">{{ crate::panel::strings::ONLINE_DISABLE }}</button></form>
+<form method="post" action="/online/disable">{{ m::csrf_field(csrf_token) }}<input type="hidden" name="forget" value="yes"><button type="submit" class="btn btn-secondary">{{ crate::panel::strings::ONLINE_UNLINK }}</button></form>
+{% else %}
+<a class="btn" href="/online/enable">{{ crate::panel::strings::ONLINE_ENABLE }}</a>
+{% endif %}
+</div>
+{% endif %}
+</section>

@@ -9,6 +9,7 @@ mod backups;
 mod mods;
 mod recovery;
 mod server;
+mod tunnel;
 
 // The service targets Linux (its fake runtime validates Linux paths), so these
 // run on unix only; on a Windows dev box use WSL.
@@ -32,6 +33,7 @@ use crate::backup::BackupError;
 use crate::db::{Db, DbError, ServerRow};
 use crate::mods::{ModError, ModrinthClient};
 use crate::runtime::{ContainerRuntime, RuntimeError};
+use crate::tunnel::{TunnelError, TunnelManager};
 
 pub use backups::Reason;
 pub use recovery::ReconcileReport;
@@ -61,6 +63,8 @@ pub enum ServiceError {
     Backup(#[from] BackupError),
     #[error(transparent)]
     Mods(#[from] ModError),
+    #[error(transparent)]
+    Tunnel(#[from] TunnelError),
     #[error("i/o error during {context}: {source}")]
     Io {
         context: &'static str,
@@ -182,6 +186,8 @@ pub struct Service<R, P> {
     pub(crate) env: Env,
     /// Present when mod management is set up (see [`Service::with_modrinth`]).
     pub(crate) modrinth: Option<Arc<ModrinthClient>>,
+    /// Present when online play (the playit.gg tunnel) is set up.
+    pub(crate) tunnel: Option<Arc<TunnelManager>>,
     locks: Mutex<HashMap<String, Arc<AsyncMutex<()>>>>,
     failures: Mutex<HashMap<String, u32>>,
 }
@@ -195,6 +201,7 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
             probe,
             env,
             modrinth: None,
+            tunnel: None,
             locks: Mutex::new(HashMap::new()),
             failures: Mutex::new(HashMap::new()),
         }
@@ -204,6 +211,13 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
     #[must_use]
     pub fn with_modrinth(mut self, client: Arc<ModrinthClient>) -> Self {
         self.modrinth = Some(client);
+        self
+    }
+
+    /// Enables online play with the given tunnel manager.
+    #[must_use]
+    pub fn with_tunnel(mut self, tunnel: Arc<TunnelManager>) -> Self {
+        self.tunnel = Some(tunnel);
         self
     }
 

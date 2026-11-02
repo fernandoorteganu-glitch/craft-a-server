@@ -8,9 +8,11 @@
 mod migrations;
 mod mods;
 mod pairing;
+mod tunnel;
 
 pub use mods::{ModChange, ModRow};
 pub use pairing::{SessionRow, hash_secret};
+pub use tunnel::TunnelRow;
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};

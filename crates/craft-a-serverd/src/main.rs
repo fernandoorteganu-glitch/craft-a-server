@@ -32,6 +32,7 @@ mod app {
     use craft_a_serverd::lifecycle::{Env, Service, TcpProbe};
     use craft_a_serverd::panel::{self, PanelState};
     use craft_a_serverd::runtime::{ContainerRuntime, PodmanCli};
+    use craft_a_serverd::tunnel::{TunnelManager, TunnelSettings, UreqFetch};
     use tokio::sync::watch;
 
     const DEFAULT_CONFIG: &str = "/etc/craft-a-server/config.toml";
@@ -143,6 +144,15 @@ mod app {
         let db = Db::open(&cfg.db_path()).map_err(|e| format!("cannot open the database: {e}"))?;
         let env = Env::system().map_err(|e| format!("cannot read system information: {e}"))?;
         let rt = Arc::new(PodmanCli::new(cfg.podman_bin.clone()));
+        let tunnel = Arc::new(TunnelManager::new(
+            TunnelSettings::production(&cfg.tunnel_dir(), cfg.mc_port),
+            db.clone(),
+            Arc::new(UreqFetch::new(concat!(
+                "craft-a-server/",
+                env!("CARGO_PKG_VERSION")
+            ))),
+            Arc::clone(&env.now_unix),
+        ));
         let service: Arc<Svc> = Arc::new(
             Service::new(
                 Arc::clone(&cfg),
@@ -153,7 +163,8 @@ mod app {
             )
             .with_modrinth(Arc::new(craft_a_serverd::mods::real_client(
                 cfg.modrinth_contact.as_deref(),
-            ))),
+            )))
+            .with_tunnel(tunnel),
         );
 
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -214,6 +225,12 @@ mod app {
                 }
             },
         );
+        // Online play: does nothing until the user turns it on. It stops its
+        // child processes itself when told to stop.
+        let tunnel_task = service.tunnel_manager().map(|manager| {
+            let (manager, stop) = (Arc::clone(manager), stop_rx.clone());
+            tokio::spawn(async move { manager.run(stop).await })
+        });
         let scheduler = spawn_loop(&service, stop_rx, SCHEDULE_EVERY, |svc| async move {
             for (id, outcome) in svc.run_due_backups().await {
                 match outcome {
@@ -254,6 +271,15 @@ mod app {
                 Ok(Err(e)) => tracing::error!(error = %e, "web panel task failed"),
                 Err(_) => tracing::warn!("the web panel did not stop in time"),
             }
+        }
+        if let Some(task) = tunnel_task
+            && tokio::time::timeout(TASK_EXIT_GRACE, task).await.is_err()
+        {
+            tracing::warn!("online play did not stop in time");
+        }
+        // Backstop: whatever happened above, no agent outlives the daemon.
+        if let Some(manager) = service.tunnel_manager() {
+            manager.shutdown().await;
         }
         for task in [supervisor, scheduler] {
             if tokio::time::timeout(TASK_EXIT_GRACE, task).await.is_err() {

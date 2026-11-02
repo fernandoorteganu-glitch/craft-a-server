@@ -1,0 +1,20 @@
+{% import "macros.html" as m %}
+<section class="card">
+<h1>{{ crate::panel::strings::ONLINE_ENABLE_TITLE }}</h1>
+<p>{{ crate::panel::strings::ONLINE_ENABLE_LEAD }}</p>
+<ul>
+<li>{{ crate::panel::strings::ONLINE_DISCLOSURE_TRAFFIC }}</li>
+<li>{{ crate::panel::strings::ONLINE_DISCLOSURE_IPS }}</li>
+<li>{{ crate::panel::strings::ONLINE_DISCLOSURE_POLICY }}</li>
+<li>{{ crate::panel::strings::ONLINE_DISCLOSURE_ACCOUNT }}</li>
+<li>{{ crate::panel::strings::ONLINE_DISCLOSURE_OFF }}</li>
+</ul>
+<div class="actions">
+<form method="post" action="/online/enable">
+{{ m::csrf_field(csrf_token) }}
+<input type="hidden" name="confirm" value="yes">
+<button type="submit" class="btn">{{ crate::panel::strings::ONLINE_ENABLE_CONFIRM }}</button>
+</form>
+<a class="btn btn-secondary" href="/online">{{ crate::panel::strings::CANCEL }}</a>
+</div>
+</section>

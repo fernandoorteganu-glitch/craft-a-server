@@ -4,6 +4,7 @@ use craft_a_server_core::ctl::{
     BackupInfo, DeviceInfo, DiagnoseInfo, EventInfo, ModChangeInfo, ModHitInfo, ModInstallPlanInfo,
     ModLineInfo, ModListInfo, ModRemovePlanInfo, ModUpdateInfo, ServerInfo,
 };
+use craft_a_server_core::tunnel::{TunnelInfo, TunnelState};
 
 /// Replaces control characters (terminal escape sequences, bells...) so text
 /// that came from a container log or a player name cannot drive the terminal.
@@ -88,6 +89,88 @@ Valid for {minutes} minute{} and works once.
         ));
     }
     out
+}
+
+/// Online play: state, claim link, public address.
+pub fn render_tunnel(info: &TunnelInfo) -> String {
+    let mut out = format!("Online play: {}", if info.enabled { "on" } else { "off" });
+    match &info.state {
+        TunnelState::NotConfigured if info.enabled => {
+            out.push_str(
+                "
+Preparing the playit agent (downloading and checking it)...",
+            );
+        }
+        TunnelState::NotConfigured => {
+            out.push_str(
+                "
+Not set up. Turn it on with: craft-a-server tunnel enable",
+            );
+        }
+        TunnelState::Claiming { code, url } => {
+            out.push_str(&format!(
+                "
+Link this machine to playit.gg: open
+  {}
+in a browser and accept (code {}).",
+                sanitize(url),
+                sanitize(code)
+            ));
+        }
+        TunnelState::Claimed => {
+            out.push_str(&format!(
+                "
+Linked to playit.gg, waiting for a Minecraft Java tunnel. In the playit                  dashboard create one that forwards to 127.0.0.1:{}.",
+                info.local_port
+            ));
+            if !info.enabled {
+                out.push_str(
+                    "
+The link is kept; turn it on again with: craft-a-server tunnel enable",
+                );
+            }
+        }
+        TunnelState::Running { address } => {
+            out.push_str(&format!(
+                "
+Friends can join at: {}",
+                sanitize(address)
+            ));
+        }
+        TunnelState::Error { reason } => {
+            out.push_str(&format!(
+                "
+Problem: {}",
+                sanitize(reason)
+            ));
+            if info.enabled {
+                out.push_str(
+                    "
+It is retried automatically.",
+                );
+            }
+        }
+    }
+    out
+}
+
+/// The claim link alone (or why there is none).
+pub fn render_claim_url(info: &TunnelInfo) -> String {
+    match &info.state {
+        TunnelState::Claiming { url, code } => format!(
+            "Open this link in a browser to link this machine to playit.gg (code {}):
+{}",
+            sanitize(code),
+            sanitize(url)
+        ),
+        _ if !info.enabled => {
+            "Online play is off. Turn it on with: craft-a-server tunnel enable".to_owned()
+        }
+        TunnelState::NotConfigured => {
+            "The link is not ready yet. Try again in a few seconds.".to_owned()
+        }
+        _ => "No link is needed right now. See: craft-a-server tunnel status".to_owned(),
+    }
 }
 
 /// Paired devices as a table.
@@ -728,5 +811,55 @@ mod tests {
             latest_version: "2".into(),
         };
         assert!(render_mod_updates(&[u]).contains("craft-a-server mods install"));
+    }
+
+    fn tunnel(enabled: bool, state: TunnelState) -> TunnelInfo {
+        TunnelInfo {
+            enabled,
+            state,
+            consent_unix: None,
+            updated_unix: 0,
+            agent_version: "1.2.0".into(),
+            local_port: 25565,
+        }
+    }
+
+    #[test]
+    fn tunnel_output_covers_every_state_and_hides_control_characters() {
+        let off = render_tunnel(&tunnel(false, TunnelState::NotConfigured));
+        assert!(
+            off.contains("off") && off.contains("tunnel enable"),
+            "{off}"
+        );
+        let prep = render_tunnel(&tunnel(true, TunnelState::NotConfigured));
+        assert!(prep.contains("Preparing"), "{prep}");
+        let claiming = tunnel(
+            true,
+            TunnelState::Claiming {
+                code: "abc123".into(),
+                url: "https://playit.gg/claim/abc123".into(),
+            },
+        );
+        let out = render_tunnel(&claiming);
+        assert!(out.contains("https://playit.gg/claim/abc123"), "{out}");
+        assert!(render_claim_url(&claiming).contains("https://playit.gg/claim/abc123"));
+        let claimed = render_tunnel(&tunnel(true, TunnelState::Claimed));
+        assert!(claimed.contains("127.0.0.1:25565"), "{claimed}");
+        let running = tunnel(
+            true,
+            TunnelState::Running {
+                address: "mine.craft.playit.gg".into(),
+            },
+        );
+        assert!(render_tunnel(&running).contains("mine.craft.playit.gg"));
+        assert!(render_claim_url(&running).contains("No link is needed"));
+        assert!(render_claim_url(&tunnel(false, TunnelState::NotConfigured)).contains("off"));
+        let err = render_tunnel(&tunnel(
+            true,
+            TunnelState::Error {
+                reason: "bad \u{1b}[31mthing".into(),
+            },
+        ));
+        assert!(err.contains("Problem") && !err.contains('\u{1b}'), "{err}");
     }
 }

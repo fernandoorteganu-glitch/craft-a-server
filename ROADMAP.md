@@ -326,6 +326,16 @@ Evidence:
 
 Known limits: the jar check reads only the zip central directory (no decompression); `incompatible` is checked for new or planned mods against installed ones, not for the installed mods' own lists; update check offers newer releases only; records go stale after a manual backup restore (the list shows `missing` / `size_changed`); removal by title needs an exact title; two changes inside one second collide on the pre_change backup name (existing backup naming); the rollback message quotes the tail of the container log, which is not always the most useful line; no mod icons (CSP unchanged).
 
+## 7e. Phase 4 status (2026-11-02): optional playit.gg tunnel built, not committed
+
+Built: `craft-a-serverd::tunnel` (pinned agent v1.2.0 with embedded SHA-256 and size per platform, HTTPS-only download with a manual redirect policy limited to GitHub asset hosts, verify-before-write and re-verify-before-launch, supervisor with exponential backoff and jitter, claim through `playit-cli setup`, address from the `rundata` API validated before display, stale agent reaping), core `tunnel` state machine and address/claim-link validators, DB migration v5 (`tunnel` table, pre-migration copy kept), ctl protocol v3 (`tunnel status|enable|disable`), CLI `craft-a-server tunnel status|enable|disable|claim-url`, and the panel "Online" screen with a disclosure and confirm step. The tunnel is OFF by default. Details and the maintainer procedure for the pinned hashes: `docs/tunnel.md`.
+
+Evidence: all tests use fakes (shell-script agents and CLI on unix, a fake HTTP client). They cover the full claim-to-running flow, no secret in argv/env/logs, secret 0600 and dir 0700, crash backoff, kill on disable and shutdown, hash mismatch, placeholder hash failing closed, a tampered binary never run, hostile addresses and non-loopback origins rejected, panel confirm/CSRF/escaping, ctl over the socket. Verified gate: fmt, clippy `-D warnings` (Windows and WSL), workspace tests (WSL: 430 daemon, 57 core, 33 CLI), cargo deny, tunnel tests repeated 5 times without flakes. Real hashes were checked against the GitHub release API and local downloads.
+
+Needs a real playit claim (NOT verified): real `playit-cli setup` output and that it works with only `--socket-path`; the secret file appearing after approval; the `rundata` endpoint, `agent-key` auth scheme and JSON shape; creating the Minecraft Java tunnel (the user does it in the dashboard, origin 127.0.0.1:25565); guest-account UX and free plan limits; the real GitHub redirect hops; real agent SIGTERM and reconnect timing; the 24 h soak; a CGNAT join; aarch64 binaries.
+
+Known limits: the tunnel origin port is `mc_port`; no external reachability self-check (item 7); no tracing redaction layer beyond never logging secrets or claim URLs (agent stderr tail is redacted); the agent is not sandboxed beyond env scrub and cwd; orphan reaping uses `/proc`; Linux x86_64 and aarch64 only.
+
 ## 8. Decisions log
 
 | Date | Decision | Alternatives | Reason |
@@ -355,3 +365,12 @@ Known limits: the jar check reads only the zip central directory (no decompressi
 | 2026-11-02 | Additive optional config field `modrinth_contact` (printable ASCII, <=100) appended to the User-Agent | Hard-coded contact | Modrinth asks for a way to reach the author; absent means the repository URL only |
 | 2026-11-02 | Health-check allowance after a mod change = `start_timeout_secs` + 10 s per mod, capped at 1800 s | Fixed timeout | Closes review item 5 for mod-heavy servers |
 | 2026-11-02 | Mods screen shows no icons | Proxy and cache icons through the daemon | CSP `img-src` stays `'self' data:`; proxying is a separate piece of work |
+| 2026-11-02 | Claim via `playit-cli setup` against the agent socket, so playitd writes the secret and it never passes through our process | Spike preferred generate code + `claim exchange` | Fewer secret-handling paths; deviates from the spike, unverified until a real claim |
+| 2026-11-02 | Own embedded SHA-256 and size for the 4 v1.2.0 assets, checked 2026-11-02 against GitHub digests and local downloads; placeholder constant fails closed | Trust download alone | Upstream ships no signatures |
+| 2026-11-02 | Download redirects followed manually, only to GitHub asset hosts, max 3, https only | Let the HTTP client follow | Pinned-host rule must hold across hops |
+| 2026-11-02 | DB migration v5: add-only `tunnel` table, single row | Store in config file | Matches existing state storage; pre-migration copy kept |
+| 2026-11-02 | ctl protocol version 3 (tunnel commands, `tunnel` error kind, `forget_claim` on disable) | Keep 2 | Old CLIs must not talk to a daemon with commands they cannot parse |
+| 2026-11-02 | Tunnel OFF by default; enabling requires an explicit confirm that lists what playit.gg receives (CLI `--yes` skips only the prompt) | Auto-enable | Third-party data flow needs informed consent |
+| 2026-11-02 | Panel "Online" screen and nav entry; home card shows the address when Running | Settings subsection | One place for the claim link, address and unlink |
+| 2026-11-02 | Backoff resets only after the agent stays up `healthy_after`; failure cause tracked | Reset on every start | Avoids a fast crash loop looking healthy |
+| 2026-11-02 | Unused core `TunnelStatus` replaced by `TunnelState`/`TunnelInfo`; one `db/mods.rs` test now compares `schema_version` to `MIGRATIONS.len()` instead of 4 | Keep old type and hard-coded 4 | Old type had no users; the test would break on every new migration |

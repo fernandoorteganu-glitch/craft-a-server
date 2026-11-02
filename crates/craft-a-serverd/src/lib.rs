@@ -7,3 +7,4 @@ pub mod lifecycle;
 pub mod mods;
 pub mod panel;
 pub mod runtime;
+pub mod tunnel;

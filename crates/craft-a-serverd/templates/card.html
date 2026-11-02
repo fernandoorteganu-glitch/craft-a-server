@@ -17,6 +17,10 @@
 <dt>{{ crate::panel::strings::CARD_ADDRESS_IP }}</dt>
 <dd><code>{{ ip }}</code></dd>
 {% endif %}
+{% if let Some(online) = online_address %}
+<dt>{{ crate::panel::strings::CARD_ADDRESS_ONLINE }}</dt>
+<dd><code>{{ online }}</code></dd>
+{% endif %}
 </dl>
 <div class="actions">
 {% if s.can_start %}

@@ -28,6 +28,7 @@ use tokio::task::JoinSet;
 use crate::db::{BackupRow, ServerRow};
 use crate::lifecycle::{Console, Reason, Service, ServiceError, StatusProbe};
 use crate::runtime::{ContainerRuntime, RuntimeError};
+use crate::tunnel::TunnelError;
 
 const MAX_CONNECTIONS: usize = 64;
 const IDLE_TIMEOUT: Duration = Duration::from_secs(600);
@@ -359,6 +360,14 @@ pub fn error_response(e: &ServiceError) -> Response {
             ErrorKind::Mods,
             crate::mods::logic::clean_text(&m.to_string(), 600),
         ),
+        ServiceError::Tunnel(TunnelError::Db(_) | TunnelError::Io(_)) => {
+            tracing::error!(error = %e, "internal error changing online play");
+            error(
+                ErrorKind::Internal,
+                "internal error; the details are in the daemon log (journalctl -u craft-a-serverd)",
+            )
+        }
+        ServiceError::Tunnel(t) => error(ErrorKind::Tunnel, t.to_string()),
         ServiceError::Runtime(RuntimeError::NotFound(_)) => error(
             ErrorKind::WrongState,
             "the server is not running".to_owned(),
@@ -539,6 +548,11 @@ where
                 .await?,
         ),
         Command::ModsCheck { id } => Response::ModUpdates(svc.mods_check(&id).await?),
+        Command::TunnelStatus {} => Response::Tunnel(svc.tunnel_info()?),
+        Command::TunnelEnable { confirm } => Response::Tunnel(svc.tunnel_enable(confirm)?),
+        Command::TunnelDisable { forget_claim } => {
+            Response::Tunnel(svc.tunnel_disable(forget_claim).await?)
+        }
         Command::DevicesRevoke { id } => {
             if svc.db().delete_session(&id)? {
                 svc.event(
@@ -669,13 +683,30 @@ mod tests {
                 }),
                 poll_interval: Duration::from_millis(10),
             };
-            let svc = Arc::new(Service::new(
-                Arc::new(cfg),
-                Db::open_in_memory()?,
-                Arc::new(rt.clone()),
-                Arc::new(UpProbe(AtomicUsize::new(0))),
-                env,
+            let db = Db::open_in_memory()?;
+            let tunnel = Arc::new(crate::tunnel::TunnelManager::new(
+                crate::tunnel::TunnelSettings {
+                    dirs: crate::tunnel::TunnelDirs::new(&cfg.tunnel_dir()),
+                    mc_port: cfg.mc_port,
+                    release: crate::tunnel::Release::pinned(),
+                    platform: Some(crate::tunnel::Platform::LinuxAmd64),
+                    rundata_url: "https://api.playit.invalid/agents/rundata".to_owned(),
+                    timings: crate::tunnel::Timings::default(),
+                },
+                db.clone(),
+                Arc::new(crate::tunnel::FakeFetch::default()),
+                Arc::clone(&env.now_unix),
             ));
+            let svc = Arc::new(
+                Service::new(
+                    Arc::new(cfg),
+                    db,
+                    Arc::new(rt.clone()),
+                    Arc::new(UpProbe(AtomicUsize::new(0))),
+                    env,
+                )
+                .with_tunnel(tunnel),
+            );
             let socket = dir.path().join("run").join("ctl.sock");
             Ok(Fixture {
                 dir,
@@ -1160,6 +1191,76 @@ mod tests {
         assert!(!d.events.is_empty());
         assert!(!serde_json::to_string(&reply)?.contains(&password));
         fx.shutdown().await
+    }
+
+    #[tokio::test]
+    async fn tunnel_commands_over_the_socket() -> TestResult {
+        use craft_a_server_core::tunnel::TunnelState;
+        let mut fx = Fixture::new()?;
+        fx.serve().await?;
+        let mut c = fx.client().await?;
+
+        // Off by default.
+        let Response::Tunnel(info) = c.call(1, Command::TunnelStatus {}).await? else {
+            return Err("expected tunnel info".into());
+        };
+        assert!(!info.enabled);
+        assert_eq!(info.state, TunnelState::NotConfigured);
+
+        // Enabling without the confirmation is refused and changes nothing.
+        let refused = c.call(2, Command::TunnelEnable { confirm: false }).await?;
+        assert_eq!(kind_of(&refused), Some(ErrorKind::Tunnel), "{refused:?}");
+        let Response::Tunnel(info) = c.call(3, Command::TunnelStatus {}).await? else {
+            return Err("expected tunnel info".into());
+        };
+        assert!(!info.enabled);
+
+        // With it, it turns on (the supervisor is not running in this test).
+        let Response::Tunnel(info) = c.call(4, Command::TunnelEnable { confirm: true }).await?
+        else {
+            return Err("expected tunnel info".into());
+        };
+        assert!(info.enabled);
+        assert_eq!(info.consent_unix, Some(1_700_000_000));
+        assert_eq!(info.agent_version, "1.2.0");
+        assert_eq!(info.local_port, 25565);
+
+        let Response::Tunnel(info) = c
+            .call(
+                5,
+                Command::TunnelDisable {
+                    forget_claim: false,
+                },
+            )
+            .await?
+        else {
+            return Err("expected tunnel info".into());
+        };
+        assert!(!info.enabled);
+
+        // The audit log says what happened, without any secret.
+        let events = fx.svc.db().recent_events(20)?;
+        assert!(events.iter().any(|e| e.kind == "tunnel_enabled"));
+        assert!(events.iter().any(|e| e.kind == "tunnel_disabled"));
+        fx.shutdown().await
+    }
+
+    #[test]
+    fn a_daemon_without_a_tunnel_answers_with_a_clear_error() -> TestResult {
+        let e = ServiceError::Tunnel(TunnelError::NotAvailable);
+        let Response::Error { kind, message } = error_response(&e) else {
+            return Err("expected an error".into());
+        };
+        assert_eq!(kind, ErrorKind::Tunnel);
+        assert!(message.contains("not set up"), "{message}");
+        // Storage failures stay generic.
+        let e = ServiceError::Tunnel(TunnelError::Io(io::Error::other("/secret/path")));
+        let Response::Error { kind, message } = error_response(&e) else {
+            return Err("expected an error".into());
+        };
+        assert_eq!(kind, ErrorKind::Internal);
+        assert!(!message.contains("/secret/path"));
+        Ok(())
     }
 
     #[tokio::test]

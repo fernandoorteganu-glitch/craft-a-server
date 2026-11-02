@@ -276,7 +276,7 @@ mod tests {
             )?;
         }
         let db = Db::open(&path)?;
-        assert_eq!(db.schema_version()?, 4);
+        assert_eq!(db.schema_version()?, MIGRATIONS.len());
         assert!(dir.path().join("craft.db.pre-v3.bak").exists());
         assert!(db.get_server("a")?.is_some());
         assert!(db.list_mods("a")?.is_empty());

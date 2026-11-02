@@ -55,6 +55,7 @@ pub const NAV_BACKUPS: &str = "Backups";
 pub const NAV_PLAYERS: &str = "Players";
 pub const NAV_LOGS: &str = "Logs";
 pub const NAV_MODS: &str = "Mods";
+pub const NAV_ONLINE: &str = "Online";
 pub const NAV_SETTINGS: &str = "Settings";
 
 // Server card
@@ -64,6 +65,7 @@ pub const CARD_VERSION: &str = "Minecraft";
 pub const CARD_PLAYERS: &str = "Players online";
 pub const CARD_ADDRESS_LOCAL: &str = "Join at home";
 pub const CARD_ADDRESS_IP: &str = "If that name does not work";
+pub const CARD_ADDRESS_ONLINE: &str = "Friends outside your home";
 pub const CARD_START: &str = "Start";
 pub const CARD_STOP: &str = "Stop";
 pub const CARD_RESTART: &str = "Restart";
@@ -227,3 +229,39 @@ pub const SETTINGS_NO_IP: &str = "The number address could not be determined on 
 pub const SETTINGS_QR_LABEL: &str = "QR code of the panel address";
 pub const SETTINGS_SERVER_ADDRESS: &str = "Minecraft address";
 pub const SETTINGS_DEVICES: &str = "Paired phones";
+
+// Online play (playit.gg tunnel)
+pub const ONLINE_TITLE: &str = "Online play";
+pub const ONLINE_INTRO: &str = "Let friends who are not on your home network join your server. It is off by default and works without changing your router.";
+pub const ONLINE_STATE: &str = "Status";
+pub const ONLINE_STATE_OFF: &str = "Off";
+pub const ONLINE_STATE_PREPARING: &str = "Getting ready";
+pub const ONLINE_STATE_CLAIMING: &str = "Waiting for you to link playit.gg";
+pub const ONLINE_STATE_CLAIMED: &str = "Linked, waiting for a tunnel";
+pub const ONLINE_STATE_RUNNING: &str = "On";
+pub const ONLINE_STATE_ERROR: &str = "Problem";
+pub const ONLINE_PREPARING_HELP: &str =
+    "Downloading the playit agent and checking it against a fixed checksum. This takes a moment.";
+pub const ONLINE_CLAIM_HELP: &str = "Open this link on any device, sign in to playit.gg (a guest account works) and accept. This page updates by itself.";
+pub const ONLINE_CLAIM_LINK: &str = "Link to open";
+pub const ONLINE_CLAIM_CODE: &str = "Code";
+pub const ONLINE_CLAIM_OPEN: &str = "Open the playit.gg link";
+pub const ONLINE_CLAIMED_HELP: &str = "This machine is linked to playit.gg. In the playit.gg dashboard, create a Minecraft Java tunnel that forwards to";
+pub const ONLINE_ADDRESS: &str = "Friends can join at";
+pub const ONLINE_ADDRESS_HELP: &str = "Only people on your whitelist can join. Players on your home network keep using the home address.";
+pub const ONLINE_ERROR_RETRY: &str = "It is retried automatically.";
+pub const ONLINE_OFF_KEPT: &str =
+    "The link to playit.gg is kept, so turning it on again needs no new sign-in.";
+pub const ONLINE_ENABLE: &str = "Turn on online play";
+pub const ONLINE_DISABLE: &str = "Turn off";
+pub const ONLINE_UNLINK: &str = "Turn off and unlink playit.gg";
+pub const ONLINE_UNAVAILABLE: &str = "Online play is not available in this daemon.";
+pub const ONLINE_AGENT: &str = "playit agent";
+pub const ONLINE_ENABLE_TITLE: &str = "Turn on online play?";
+pub const ONLINE_ENABLE_LEAD: &str = "Before you turn this on, here is what it means:";
+pub const ONLINE_ENABLE_CONFIRM: &str = "I understand, turn it on";
+pub const ONLINE_DISCLOSURE_TRAFFIC: &str = craft_a_server_core::tunnel::DISCLOSURE_TRAFFIC;
+pub const ONLINE_DISCLOSURE_IPS: &str = craft_a_server_core::tunnel::DISCLOSURE_IPS;
+pub const ONLINE_DISCLOSURE_POLICY: &str = craft_a_server_core::tunnel::DISCLOSURE_POLICY;
+pub const ONLINE_DISCLOSURE_ACCOUNT: &str = craft_a_server_core::tunnel::DISCLOSURE_ACCOUNT;
+pub const ONLINE_DISCLOSURE_OFF: &str = craft_a_server_core::tunnel::DISCLOSURE_OFF;

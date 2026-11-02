@@ -302,14 +302,18 @@ code {
   background: var(--ok-bg);
 }
 
-.state-failed {
+.state-failed,
+.state-error {
   color: var(--danger-text);
   background: var(--danger-bg);
 }
 
 .state-starting,
 .state-stopping,
-.state-creating {
+.state-creating,
+.state-preparing,
+.state-claiming,
+.state-claimed {
   color: var(--busy-text);
   background: var(--busy-bg);
 }

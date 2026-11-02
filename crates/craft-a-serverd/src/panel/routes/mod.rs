@@ -9,6 +9,7 @@
 mod assets;
 mod backups;
 mod mods;
+mod online;
 mod pair;
 mod players;
 mod screens;
@@ -178,6 +179,22 @@ where
             "/mods/remove/{id}",
             Access::Session,
             get(mods::remove_confirm::<R, P>).post(mods::remove::<R, P>),
+        )
+        .add("/online", Access::Session, get(online::page::<R, P>))
+        .add(
+            "/partials/online",
+            Access::Session,
+            get(online::status::<R, P>),
+        )
+        .add(
+            "/online/enable",
+            Access::Session,
+            get(online::enable_confirm::<R, P>).post(online::enable::<R, P>),
+        )
+        .add(
+            "/online/disable",
+            Access::Session,
+            post(online::disable::<R, P>),
         )
         .add(
             "/settings/devices",

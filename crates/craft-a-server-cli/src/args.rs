@@ -100,6 +100,28 @@ pub enum Cmd {
         #[command(subcommand)]
         action: ModsCmd,
     },
+    /// Online play: let friends outside your home network join through a
+    /// playit.gg tunnel (off by default).
+    Tunnel {
+        #[command(subcommand)]
+        action: TunnelCmd,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum TunnelCmd {
+    /// Show whether online play is on, the claim link and the public address.
+    Status,
+    /// Turn online play on. Shows what is shared with playit.gg first.
+    Enable,
+    /// Turn online play off and stop the agent.
+    Disable {
+        /// Also forget the saved link to the playit.gg account.
+        #[arg(long)]
+        forget_claim: bool,
+    },
+    /// Print the link to open in a browser to link this machine to playit.gg.
+    ClaimUrl,
 }
 
 #[derive(Debug, Subcommand)]
@@ -257,6 +279,14 @@ impl Cmd {
                 },
                 ModsCmd::Check { id } => Command::ModsCheck { id: id.clone() },
             },
+            Cmd::Tunnel { action } => match action {
+                TunnelCmd::Status | TunnelCmd::ClaimUrl => Command::TunnelStatus {},
+                // The caller shows the disclosure and asks before sending this.
+                TunnelCmd::Enable => Command::TunnelEnable { confirm: true },
+                TunnelCmd::Disable { forget_claim } => Command::TunnelDisable {
+                    forget_claim: *forget_claim,
+                },
+            },
         }
     }
 
@@ -272,9 +302,28 @@ impl Cmd {
                 "This replaces the data of server {id} with backup {backup_id} \
                  (the current state is backed up first)."
             )),
+            Cmd::Tunnel {
+                action: TunnelCmd::Enable,
+            } => Some(tunnel_disclosure()),
             _ => None,
         }
     }
+}
+
+/// What turning on online play shares, as shown before the confirmation.
+pub fn tunnel_disclosure() -> String {
+    let mut out = String::from(
+        "Online play sends your server's traffic through playit.gg.
+",
+    );
+    for paragraph in craft_a_server_core::tunnel::disclosure() {
+        out.push_str(
+            "
+- ",
+        );
+        out.push_str(paragraph);
+    }
+    out
 }
 
 fn console(id: &str, action: ConsoleAction, player: &str) -> Command {
@@ -449,6 +498,50 @@ mod tests {
         );
         assert!(parse(&["whitelist", "add", "s1"]).is_err());
         assert!(parse(&["kick", "s1"]).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn tunnel_commands_map_and_enabling_needs_the_disclosure() -> TestResult {
+        assert_eq!(
+            parse(&["tunnel", "status"])?.command.to_command(),
+            Command::TunnelStatus {}
+        );
+        assert_eq!(
+            parse(&["tunnel", "claim-url"])?.command.to_command(),
+            Command::TunnelStatus {}
+        );
+        assert_eq!(
+            parse(&["tunnel", "enable"])?.command.to_command(),
+            Command::TunnelEnable { confirm: true }
+        );
+        assert_eq!(
+            parse(&["tunnel", "disable", "--forget-claim"])?
+                .command
+                .to_command(),
+            Command::TunnelDisable { forget_claim: true }
+        );
+        assert_eq!(
+            parse(&["tunnel", "disable"])?.command.to_command(),
+            Command::TunnelDisable {
+                forget_claim: false
+            }
+        );
+        let text = parse(&["tunnel", "enable"])?
+            .command
+            .needs_confirmation()
+            .ok_or("enabling must ask first")?;
+        assert!(
+            text.contains("playit.gg") && text.contains("IP address"),
+            "{text}"
+        );
+        assert!(
+            parse(&["tunnel", "disable"])?
+                .command
+                .needs_confirmation()
+                .is_none()
+        );
+        assert!(parse(&["tunnel"]).is_err());
         Ok(())
     }
 

@@ -7,6 +7,7 @@
 use super::error::PanelError;
 use super::strings as s;
 use crate::lifecycle::ServiceError;
+use crate::tunnel::TunnelError;
 
 /// The sentence shown to the person for a failed action.
 pub fn service_error_text(e: &ServiceError) -> String {
@@ -21,6 +22,11 @@ pub fn service_error_text(e: &ServiceError) -> String {
         // Written for people and free of paths; may hold mod names, which
         // the templates escape.
         ServiceError::Mods(m) => capitalize(&crate::mods::logic::clean_text(&m.to_string(), 500)),
+        // Fixed sentences without paths.
+        ServiceError::Tunnel(TunnelError::Db(_) | TunnelError::Io(_)) => {
+            s::ERR_ACTION_FAILED.to_owned()
+        }
+        ServiceError::Tunnel(t) => capitalize(&t.to_string()),
         ServiceError::Db(_)
         | ServiceError::Runtime(_)
         | ServiceError::Backup(_)
@@ -34,6 +40,9 @@ pub fn service_error(e: &ServiceError) -> PanelError {
     match e {
         ServiceError::InvalidInput(_) | ServiceError::EulaNotAccepted => PanelError::Invalid(text),
         ServiceError::NotFound(_) => PanelError::NotFound,
+        ServiceError::Tunnel(TunnelError::Db(_) | TunnelError::Io(_)) => PanelError::internal(e),
+        ServiceError::Tunnel(TunnelError::NotConfirmed) => PanelError::Invalid(text),
+        ServiceError::Tunnel(_) => PanelError::Conflict(text),
         ServiceError::WrongState { .. }
         | ServiceError::DiskLow
         | ServiceError::Memory(_)

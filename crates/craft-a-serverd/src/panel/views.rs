@@ -37,6 +37,8 @@ pub struct CardBody<'a> {
     pub server: Option<ServerView>,
     pub banner: Banner,
     pub csrf_token: &'a str,
+    /// The tunnel's public address, when online play is running.
+    pub online_address: Option<String>,
 }
 
 /// Home: the card plus who is signed in.
@@ -328,6 +330,101 @@ pub struct SettingsBody<'a> {
     pub qr_svg: Option<String>,
     pub mc_local: Option<String>,
     pub mc_ip: Option<String>,
+}
+
+/// The Online play screen: a heading and the polled status partial.
+#[derive(Template, Debug)]
+#[template(path = "online.html")]
+pub struct OnlineBody<'a> {
+    pub status: &'a str,
+}
+
+/// What the status partial shows. Everything is plain text and escaped by
+/// the template; the claim link has already been validated by the core.
+#[derive(Template, Debug)]
+#[template(path = "online_status.html")]
+pub struct OnlineStatusBody<'a> {
+    pub available: bool,
+    pub enabled: bool,
+    /// `off`, `preparing`, `claiming`, `claimed`, `running` or `error`.
+    pub phase: &'static str,
+    pub label: &'static str,
+    pub claim_url: Option<String>,
+    pub claim_code: Option<String>,
+    pub address: Option<String>,
+    pub error: Option<String>,
+    /// Off, but a link to playit.gg is kept.
+    pub keeps_link: bool,
+    pub local_port: u16,
+    pub agent_version: String,
+    pub csrf_token: &'a str,
+}
+
+impl OnlineStatusBody<'_> {
+    /// The partial for a daemon without online play.
+    pub fn unavailable(csrf_token: &str) -> OnlineStatusBody<'_> {
+        OnlineStatusBody {
+            available: false,
+            enabled: false,
+            phase: "off",
+            label: s::ONLINE_STATE_OFF,
+            claim_url: None,
+            claim_code: None,
+            address: None,
+            error: None,
+            keeps_link: false,
+            local_port: 0,
+            agent_version: String::new(),
+            csrf_token,
+        }
+    }
+}
+
+/// The disclosure and the confirm button.
+#[derive(Template, Debug)]
+#[template(path = "online_enable.html")]
+pub struct OnlineEnableBody<'a> {
+    pub csrf_token: &'a str,
+}
+
+/// Prepares the status partial from the tunnel's info.
+pub fn online_status<'a>(
+    info: &craft_a_server_core::tunnel::TunnelInfo,
+    csrf_token: &'a str,
+) -> OnlineStatusBody<'a> {
+    use craft_a_server_core::tunnel::TunnelState;
+    let (phase, label) = match (&info.state, info.enabled) {
+        (TunnelState::Running { .. }, true) => ("running", s::ONLINE_STATE_RUNNING),
+        (TunnelState::Error { .. }, _) => ("error", s::ONLINE_STATE_ERROR),
+        (_, false) => ("off", s::ONLINE_STATE_OFF),
+        (TunnelState::NotConfigured, true) => ("preparing", s::ONLINE_STATE_PREPARING),
+        (TunnelState::Claiming { .. }, true) => ("claiming", s::ONLINE_STATE_CLAIMING),
+        (TunnelState::Claimed, true) => ("claimed", s::ONLINE_STATE_CLAIMED),
+    };
+    let (mut claim_url, mut claim_code, mut address, mut error) = (None, None, None, None);
+    match &info.state {
+        TunnelState::Claiming { code, url } if info.enabled => {
+            claim_url = Some(url.clone());
+            claim_code = Some(code.clone());
+        }
+        TunnelState::Running { address: a } if info.enabled => address = Some(a.clone()),
+        TunnelState::Error { reason } => error = Some(clean_text(reason)),
+        _ => {}
+    }
+    OnlineStatusBody {
+        available: true,
+        enabled: info.enabled,
+        phase,
+        label,
+        claim_url,
+        claim_code,
+        address,
+        error,
+        keeps_link: !info.enabled && info.state == TunnelState::Claimed,
+        local_port: info.local_port,
+        agent_version: info.agent_version.clone(),
+        csrf_token,
+    }
 }
 
 // ----------------------------------------------------------------- helpers
