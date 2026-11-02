@@ -59,3 +59,24 @@ The official pages could not be fetched; two web searches returned summaries and
 Sources consulted: the GameServerKings monetisation article, a Minecraft Forum EULA interpretation, a GitHub pull request in another project that implemented the same rules, and the search index's copy of `minecraft.net/en-us/usage-guidelines`. None is authoritative.
 
 **Still required:** a person reads `minecraft.net/en-us/eula` and `minecraft.net/en-us/usage-guidelines` and confirms the table. Also add the disclaimer to the GitHub repository description and to the release notes.
+
+## Checked against the official Usage Guidelines, 2026-11-02
+
+The project owner pasted the text of `minecraft.net/en-us/usage-guidelines` into the working session (it could not be fetched automatically). The table below compares the project with that text. The **EULA text itself has still not been read**; only the Usage Guidelines have.
+
+| Requirement in the guidelines | Where the project stands | Status |
+|---|---|---|
+| Do not use the Minecraft name as the primary or dominant name; it may be a secondary name or used "to describe your creations or their purpose honestly and fairly". Names "confusingly similar" to Minecraft also count as the name | Product name is `craft-a-server`; "Minecraft" appears only descriptively ("a Minecraft Java server"). "craft" alone is not confusingly similar | OK, but the owner should judge "confusingly similar" for themselves |
+| Do not use any other part of the brand or assets (logos, fonts, textures, game code, screenshots from the games) | None used; the panel has its own plain style | OK |
+| Prominently include "NOT AN OFFICIAL MINECRAFT [PRODUCT/…]. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT" on the product, listing, description, website and related materials | README, every panel page footer (tested), CLI `--help`, installer output, release notes | Done in the repository. **Still to do by the owner:** put it in the GitHub repository "About" description |
+| Make clear that you (not Mojang) are responsible; name the publisher/owner; say whom to contact and how ("chat and forum links are not acceptable methods") | README and `SECURITY.md` do not yet name a publisher or give an email address | **Open: needs the owner's choice of name and contact address** |
+| Do not redistribute the games or altered game files | The server jar is never bundled; the container image downloads it from Mojang on the user's machine. Backups hold local copies on the user's own disk and are never uploaded | OK |
+| Mods: distribute "the mod only", no play-to-earn, no checks of out-of-game ownership | The project distributes no mods; it downloads mods the user picks from Modrinth | OK |
+| Servers: access only for users with a genuine paid-for copy | `ONLINE_MODE=TRUE` is set on every server (`runtime/spec.rs`) and covered by tests; there is no setting to turn it off | OK |
+| Servers: do not hide or alter Minecraft's own dialogs/prompts, including the EULA | Nothing is altered in the game. The panel shows the EULA link and requires an explicit tick before the daemon sets `EULA=TRUE`; it is never set silently | OK |
+| Servers that take money: same price for all, no pay-to-win, virtual currency rules, payment history, privacy responsibility, influencer disclosure | The project has no payment or selling features. These rules fall on whoever runs a monetised server | Not applicable to the software; README points server owners to the guidelines |
+| Sharing a creation, even free of charge, counts as "commercial use" and must follow the guidelines | Followed as above | OK |
+| Guidelines may change at any time and permission can be revoked | Re-read them before every public release | Process item |
+| Mojang does not give advice on whether a project complies; "speak to an attorney" | No lawyer has reviewed this | **Open: owner's decision** |
+
+Remaining before wide promotion: publisher name and contact address (above), the GitHub "About" line, reading the EULA, a trademark search, and an attorney's opinion if the owner wants certainty.

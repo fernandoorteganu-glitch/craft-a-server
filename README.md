@@ -52,6 +52,10 @@ From the panel you create the server (you accept the Minecraft EULA yourself), a
 - **Online play (playit.gg) is optional and off by default.** It sends your server's traffic and your players' IP addresses through a third party. The panel explains this before you turn it on. See [docs/tunnel.md](docs/tunnel.md).
 - Backups are made daily and before every change; test a restore once.
 
+## Running a server for other people
+
+Hosting a Minecraft server for others is covered by Mojang's [Usage Guidelines](https://www.minecraft.net/en-us/usage-guidelines) (see "Servers and hosting") and the [EULA](https://www.minecraft.net/en-us/eula). In short, only players with a genuine copy may join (craft-a-server keeps online mode on and gives you no switch to turn it off), and if you charge for access you must follow the rules there, for example no pay-to-win. You are responsible for your server and for your players' data. craft-a-server does not sell anything.
+
 ## Update, roll back, uninstall
 
 Nothing updates by itself, and nothing contacts the internet for updates unless you run the command:
