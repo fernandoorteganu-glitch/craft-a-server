@@ -1,12 +1,12 @@
 {% import "macros.html" as m %}
 {{ card|safe }}
 <ul class="tiles">
-<li><a class="tile" href="/backups"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v4H3z M5 8v12h14V8 M10 12h4"/></svg><strong>{{ crate::panel::strings::NAV_BACKUPS }}</strong></a></li>
-<li><a class="tile" href="/mods"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z M3.3 7.5L12 12l8.7-4.5 M12 22V12"/></svg><strong>{{ crate::panel::strings::NAV_MODS }}</strong></a></li>
-<li><a class="tile" href="/players"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M22 21v-2a4 4 0 0 0-3-3.9 M16 3.1a4 4 0 0 1 0 7.8"/></svg><strong>{{ crate::panel::strings::NAV_PLAYERS }}</strong></a></li>
-<li><a class="tile" href="/world"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M2 12h20 M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/></svg><strong>{{ crate::panel::strings::NAV_WORLD }}</strong></a></li>
-<li><a class="tile" href="/logs"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l6-6-6-6 M12 19h8"/></svg><strong>{{ crate::panel::strings::NAV_LOGS }}</strong></a></li>
-<li><a class="tile" href="/performance"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><strong>{{ crate::panel::strings::NAV_PERFORMANCE }}</strong></a></li>
+<li><a class="tile" href="/backups"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v4H3z M5 8v12h14V8 M10 12h4"/></svg><span class="tile-text"><strong>{{ crate::panel::strings::NAV_BACKUPS }}</strong><small>{{ crate::panel::strings::TILE_BACKUPS }}</small></span></a></li>
+<li><a class="tile" href="/mods"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z M3.3 7.5L12 12l8.7-4.5 M12 22V12"/></svg><span class="tile-text"><strong>{{ crate::panel::strings::NAV_MODS }}</strong><small>{{ crate::panel::strings::TILE_MODS }}</small></span></a></li>
+<li><a class="tile" href="/players"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M22 21v-2a4 4 0 0 0-3-3.9 M16 3.1a4 4 0 0 1 0 7.8"/></svg><span class="tile-text"><strong>{{ crate::panel::strings::NAV_PLAYERS }}</strong><small>{{ crate::panel::strings::TILE_PLAYERS }}</small></span></a></li>
+<li><a class="tile" href="/world"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M2 12h20 M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/></svg><span class="tile-text"><strong>{{ crate::panel::strings::NAV_WORLD }}</strong><small>{{ crate::panel::strings::TILE_WORLD }}</small></span></a></li>
+<li><a class="tile" href="/logs"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l6-6-6-6 M12 19h8"/></svg><span class="tile-text"><strong>{{ crate::panel::strings::NAV_LOGS }}</strong><small>{{ crate::panel::strings::TILE_LOGS }}</small></span></a></li>
+<li><a class="tile" href="/performance"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span class="tile-text"><strong>{{ crate::panel::strings::NAV_PERFORMANCE }}</strong><small>{{ crate::panel::strings::TILE_PERFORMANCE }}</small></span></a></li>
 </ul>
 <form method="post" action="/api/logout" class="signout">
 <span class="note">{{ crate::panel::strings::HOME_PAIRED_AS }} {{ device_name }}</span>

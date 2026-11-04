@@ -108,7 +108,33 @@ fn project_id(id: &str) -> Result<&str, PanelError> {
     }
 }
 
-async fn list_html<R, P>(state: &PanelState<R, P>) -> Result<String, PanelError>
+/// `Showing 21-40 of 1,234`.
+fn total_text_for(total: u64, page: u32, shown: usize) -> String {
+    let first = u64::from(page) * u64::from(PAGE_SIZE) + 1;
+    let last = first + (shown as u64).max(1) - 1;
+    format!(
+        "Showing {}-{} of {}",
+        group_digits(first),
+        group_digits(last.min(total)),
+        group_digits(total)
+    )
+}
+
+/// `1234567` -> `1,234,567`.
+fn group_digits(n: u64) -> String {
+    let digits = n.to_string();
+    let mut out = String::new();
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
+}
+
+/// The installed list as HTML, and how many mods it holds.
+async fn list_html<R, P>(state: &PanelState<R, P>) -> Result<(String, usize), PanelError>
 where
     R: ContainerRuntime + 'static,
     P: StatusProbe + 'static,
@@ -127,11 +153,13 @@ where
         }
         None => (Vec::new(), Vec::new()),
     };
-    render(&ModsList {
+    let count = mods.len();
+    let html = render(&ModsList {
         mods,
         untracked,
         banner: state.activity().banner(state.core().now()),
-    })
+    })?;
+    Ok((html, count))
 }
 
 pub async fn page<R, P>(
@@ -163,6 +191,7 @@ where
     let mut results = None;
     let mut search_error = None;
     let mut has_more = false;
+    let mut total_text = None;
     // Browsing needs no search text: with none, the popular mods show.
     if let Some(row) = &server {
         let browse = ModBrowse {
@@ -173,9 +202,14 @@ where
             sort,
         };
         match state.service().mods_browse(&row.id, browse).await {
-            Ok(hits) => {
-                has_more = hits.len() >= (PAGE_SIZE / 2) as usize && page < MAX_PAGE;
-                results = Some(hits.iter().map(ModHitView::new).collect());
+            Ok(found) => {
+                // Modrinth says how many match, so the last page has no Next.
+                has_more =
+                    u64::from(page + 1) * u64::from(PAGE_SIZE) < found.total && page < MAX_PAGE;
+                if found.total > 0 {
+                    total_text = Some(total_text_for(found.total, page, found.hits.len()));
+                }
+                results = Some(found.hits.iter().map(ModHitView::new).collect());
             }
             Err(e) => {
                 tracing::warn!(error = %e, "mod search failed");
@@ -183,7 +217,7 @@ where
             }
         }
     }
-    let list = list_html(&state).await?;
+    let (list, installed_count) = list_html(&state).await?;
     let here = BrowseState {
         query: &query,
         include_unknown,
@@ -217,6 +251,13 @@ where
         sort: sort.key(),
         categories,
         sorts,
+        total_text,
+        retry: browse_href(&here, category, sort.key(), page),
+        filtered: !query.is_empty()
+            || !category.is_empty()
+            || include_unknown
+            || sort != SearchSort::Auto,
+        installed_count,
         prev: (page > 0).then(|| browse_href(&here, category, sort.key(), page - 1)),
         next: has_more.then(|| browse_href(&here, category, sort.key(), page + 1)),
         list: &list,
@@ -275,7 +316,7 @@ where
     R: ContainerRuntime + 'static,
     P: StatusProbe + 'static,
 {
-    Ok(Html(list_html(&state).await?).into_response())
+    Ok(Html(list_html(&state).await?.0).into_response())
 }
 
 /// `GET /mods/updates`: read-only comparison with Modrinth.
@@ -373,7 +414,8 @@ where
                 .map(|_| ())
         },
     )?;
-    Ok(redirect("/mods"))
+    // Back to the installed list, where the progress shows.
+    Ok(redirect("/mods#mods-list"))
 }
 
 /// `GET /mods/remove/{id}`: dependents and orphans, then the confirm button.
@@ -440,5 +482,6 @@ where
                 .map(|_| ())
         },
     )?;
-    Ok(redirect("/mods"))
+    // Back to the installed list, where the progress shows.
+    Ok(redirect("/mods#mods-list"))
 }

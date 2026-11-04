@@ -17,6 +17,17 @@ pub const ASSETS: &[(&str, &str, &[u8])] = &[
     ("world.js", "text/javascript; charset=utf-8", WORLD_JS),
 ];
 
+/// A short fingerprint of the stylesheet, put in its address so a browser
+/// that cached an older one fetches the new one as soon as it changes.
+pub fn css_version() -> &'static str {
+    static VERSION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    VERSION.get_or_init(|| {
+        use sha2::{Digest, Sha256};
+        let digest = Sha256::digest(PANEL_CSS);
+        digest.iter().take(4).map(|b| format!("{b:02x}")).collect()
+    })
+}
+
 pub async fn healthz() -> &'static str {
     "ok"
 }

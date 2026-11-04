@@ -118,6 +118,8 @@ pub const CREATE_VERSION_DEFAULT: &str = "26.3";
 pub const CREATE_VERSION_HELP: &str =
     "Java Edition. Players need to join with this same version. Releases are the safe choice.";
 pub const CREATE_VERSION_SNAPSHOTS: &str = "Snapshots and pre-releases";
+pub const CREATE_VERSION_OLDER: &str = "Older releases";
+pub const CREATE_VERSION_FALLBACK: &str = "The full list of versions could not be loaded just now, so only a short list is shown. Reload this page to try again.";
 pub const CREATE_MEMORY: &str = "Memory for the game";
 pub const CREATE_MEMORY_LOW: &str =
     "This machine has little memory. Expect the server to struggle with several players.";
@@ -221,8 +223,21 @@ pub const MODS_SORT_FOLLOWS: &str = "Most followed";
 pub const MODS_SORT_NEWEST: &str = "Newest";
 pub const MODS_SORT_UPDATED: &str = "Recently updated";
 pub const MODS_BROWSE_TITLE: &str = "Find mods";
+pub const TILE_BACKUPS: &str = "Save and restore your world";
+pub const TILE_MODS: &str = "Find and install mods";
+pub const TILE_PLAYERS: &str = "Whitelist and who is online";
+pub const TILE_WORLD: &str = "Import a world from a zip";
+pub const TILE_LOGS: &str = "What the server is saying";
+pub const TILE_PERFORMANCE: &str = "Memory, processor and view distance";
 pub const MODS_PREV: &str = "Previous";
 pub const MODS_NEXT: &str = "Next";
+pub const MODS_RETRY: &str = "Try again";
+pub const MODS_CLEAR: &str = "Clear search and filters";
+pub const MODS_JUMP_INSTALLED: &str = "Installed mods";
+pub const MODS_NO_RESULTS_FILTERED: &str = "No mods match. Try other words, another category, or tick the box to include mods that do not state their server side.";
+pub const MODS_CATEGORIES_LABEL: &str = "Categories";
+pub const MODS_ORDER_LABEL: &str = "Order";
+pub const MODS_PAGES_LABEL: &str = "Pages";
 pub const BUSY_MODS_INSTALL: &str =
     "Installing the mod. The server restarts, which can take a few minutes.";
 pub const BUSY_MODS_REMOVE: &str =

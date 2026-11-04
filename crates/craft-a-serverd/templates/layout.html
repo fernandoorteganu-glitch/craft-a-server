@@ -8,7 +8,7 @@
 {# htmx must not inject its own <style> or evaluate strings: the CSP forbids both. #}
 <meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false,"selfRequestsOnly":true}'>
 <title>{{ title }} - {{ crate::panel::strings::APP_NAME }}</title>
-<link rel="stylesheet" href="/static/panel.css">
+<link rel="stylesheet" href="/static/panel.css?v={{ css_version }}">
 <script src="/static/htmx.min.js" defer></script>
 </head>
 {# Every htmx request from a signed-in page carries the CSRF token via this header. #}

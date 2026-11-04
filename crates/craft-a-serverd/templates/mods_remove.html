@@ -1,7 +1,10 @@
 {% import "macros.html" as m %}
 <section class="card">
 <h1>{{ crate::panel::strings::MODS_REMOVE_TITLE }}</h1>
-<p><strong>{{ plan.title }}</strong></p>
+<div class="row inst summary">
+<div class="mod-icon mod-icon-sm"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z M3.3 7.5L12 12l8.7-4.5 M12 22V12"/></svg></div>
+<div class="grow inst-title"><strong>{{ plan.title }}</strong></div>
+</div>
 {% if !plan.dependents.is_empty() %}
 <p class="alert" role="alert">{{ crate::panel::strings::MODS_DEPENDENTS_WARNING }} {{ dependents }}</p>
 {% endif %}

@@ -6,7 +6,7 @@
 //! added to the router by other means is not in the table and is treated as
 //! [`Access::Session`] (fail closed).
 
-mod assets;
+pub(crate) mod assets;
 mod backups;
 mod mods;
 mod online;

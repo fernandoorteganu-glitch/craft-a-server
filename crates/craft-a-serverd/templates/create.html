@@ -15,6 +15,16 @@
 <label class="vopt"><input type="radio" name="mc_version" value="{{ v }}"{% if v.as_str() == mc_version %} checked{% endif %} required><span>{{ v }}</span></label>
 {% endfor %}
 </div>
+{% if !older.is_empty() %}
+<details{% if older_picked %} open{% endif %}>
+<summary>{{ crate::panel::strings::CREATE_VERSION_OLDER }} ({{ older.len() }})</summary>
+<div class="vgrid">
+{% for v in older %}
+<label class="vopt"><input type="radio" name="mc_version" value="{{ v }}"{% if v.as_str() == mc_version %} checked{% endif %} required><span>{{ v }}</span></label>
+{% endfor %}
+</div>
+</details>
+{% endif %}
 {% if !snapshots.is_empty() %}
 <details{% if snapshot_picked %} open{% endif %}>
 <summary>{{ crate::panel::strings::CREATE_VERSION_SNAPSHOTS }} ({{ snapshots.len() }})</summary>
@@ -25,6 +35,7 @@
 </div>
 </details>
 {% endif %}
+{% if short_list %}<p class="note" role="status">{{ crate::panel::strings::CREATE_VERSION_FALLBACK }}</p>{% endif %}
 <p class="note">{{ crate::panel::strings::CREATE_VERSION_HELP }}</p>
 </fieldset>
 <p>{{ crate::panel::strings::CREATE_MEMORY }}:

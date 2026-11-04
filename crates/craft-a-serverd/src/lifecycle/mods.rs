@@ -72,6 +72,13 @@ pub struct ModBrowseHit {
     pub categories: Vec<String>,
 }
 
+/// One page of browser results and how many mods match in all.
+#[derive(Debug, Clone)]
+pub struct ModBrowsePage {
+    pub hits: Vec<ModBrowseHit>,
+    pub total: u64,
+}
+
 /// A mod resolved for installing, with display names.
 struct Prepared {
     plan: resolver::Plan,
@@ -125,13 +132,14 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
         Ok(self
             .mods_browse(id, browse)
             .await?
+            .hits
             .into_iter()
             .map(|h| h.info)
             .collect())
     }
 
     /// The mod browser's search: filters, ordering and what a card shows.
-    pub async fn mods_browse(&self, id: &str, q: ModBrowse<'_>) -> Result<Vec<ModBrowseHit>> {
+    pub async fn mods_browse(&self, id: &str, q: ModBrowse<'_>) -> Result<ModBrowsePage> {
         let ModBrowse {
             text,
             include_unknown,
@@ -144,8 +152,8 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
         let client = self.modrinth_client()?;
         let text = text.to_owned();
         let mc = row.mc_version;
-        let hits = blocking(move || {
-            client.search(SearchQuery {
+        let (hits, total) = blocking(move || {
+            client.search_page(SearchQuery {
                 text: &text,
                 mc_version: &mc,
                 include_unknown,
@@ -162,7 +170,7 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
             .into_iter()
             .map(|m| m.project_id)
             .collect();
-        Ok(hits
+        let hits = hits
             .into_iter()
             .map(|h| ModBrowseHit {
                 icon_url: h.icon_url.filter(|u| validate_cdn_url(u)),
@@ -186,7 +194,8 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
                     },
                 },
             })
-            .collect())
+            .collect();
+        Ok(ModBrowsePage { hits, total })
     }
 
     /// A project icon for the panel, fetched from the Modrinth CDN.

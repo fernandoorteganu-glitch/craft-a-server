@@ -245,27 +245,66 @@ where
     })
 }
 
-/// The versions for the picker: `(releases, snapshots)`. The version already
-/// chosen is always in the list, even when the catalog does not know it (an
-/// older choice kept after a failed submit), so it stays selected.
-async fn version_choices<R, P>(state: &PanelState<R, P>, chosen: &str) -> (Vec<String>, Vec<String>)
+/// How many releases show up front; the rest wait in a folded list.
+const NEWEST_RELEASES: usize = 12;
+
+/// What the version picker shows.
+struct VersionChoices {
+    releases: Vec<String>,
+    older: Vec<String>,
+    snapshots: Vec<String>,
+    /// The version to start on.
+    picked: String,
+    /// Only the built-in list is available (the service could not be reached).
+    short_list: bool,
+}
+
+/// The versions for the picker. The version already chosen is always in the
+/// list, even when the catalog does not know it (an older choice kept after a
+/// failed submit), so it stays selected. With `use_default`, the built-in
+/// default is only taken if the catalog knows it; otherwise the newest release
+/// is picked.
+async fn version_choices<R, P>(
+    state: &PanelState<R, P>,
+    chosen: &str,
+    use_default: bool,
+) -> VersionChoices
 where
     R: ContainerRuntime + 'static,
     P: StatusProbe + 'static,
 {
     let all = state.service().game_versions().await;
-    let known = all.iter().any(|v| v.id == chosen);
-    let mut releases: Vec<String> = Vec::new();
-    if !known && !chosen.is_empty() {
-        releases.push(chosen.to_owned());
+    let short_list = all == crate::versions::fallback();
+    let mut picked = chosen.to_owned();
+    if use_default
+        && !all.iter().any(|v| v.id == chosen)
+        && let Some(newest) = all.iter().find(|v| v.stable).or_else(|| all.first())
+    {
+        picked.clone_from(&newest.id);
     }
-    releases.extend(all.iter().filter(|v| v.stable).map(|v| v.id.clone()));
+    let known = all.iter().any(|v| v.id == picked);
+    let mut releases: Vec<String> = all
+        .iter()
+        .filter(|v| v.stable)
+        .map(|v| v.id.clone())
+        .collect();
+    if !known && !picked.is_empty() {
+        releases.insert(0, picked.clone());
+    }
+    // A pick among the older ones opens that list (see `older_picked`).
+    let older = releases.split_off(NEWEST_RELEASES.min(releases.len()));
     let snapshots = all
         .iter()
         .filter(|v| !v.stable)
         .map(|v| v.id.clone())
         .collect();
-    (releases, snapshots)
+    VersionChoices {
+        releases,
+        older,
+        snapshots,
+        picked,
+        short_list,
+    }
 }
 
 async fn create_page<R, P>(
@@ -274,20 +313,24 @@ async fn create_page<R, P>(
     error: Option<&str>,
     name: &str,
     mc_version: &str,
+    use_default: bool,
 ) -> Result<Response, PanelError>
 where
     R: ContainerRuntime + 'static,
     P: StatusProbe + 'static,
 {
-    let (releases, snapshots) = version_choices(state, mc_version).await;
+    let v = version_choices(state, mc_version, use_default).await;
     let body = CreateBody {
         csrf_token: &session.csrf_token,
         error,
         name,
-        mc_version,
-        snapshot_picked: snapshots.iter().any(|v| v == mc_version),
-        releases,
-        snapshots,
+        mc_version: &v.picked,
+        snapshot_picked: v.snapshots.contains(&v.picked),
+        older_picked: v.older.contains(&v.picked),
+        short_list: v.short_list,
+        releases: v.releases,
+        older: v.older,
+        snapshots: v.snapshots,
         memory: memory_view(state),
     };
     let mut res = pages::screen(s::CREATE_TITLE, "home", session, &body)?.into_response();
@@ -317,6 +360,7 @@ where
         None,
         s::CREATE_NAME_DEFAULT,
         s::CREATE_VERSION_DEFAULT,
+        true,
     )
     .await
 }
@@ -353,7 +397,17 @@ where
     }
     let form_error = |message: String| {
         let (state, session, form) = (&state, &session, &form);
-        async move { create_page(state, session, Some(&message), &form.name, &form.mc_version).await }
+        async move {
+            create_page(
+                state,
+                session,
+                Some(&message),
+                &form.name,
+                &form.mc_version,
+                false,
+            )
+            .await
+        }
     };
     if form.eula.as_deref() != Some("yes") {
         return form_error(s::ERR_EULA.to_owned()).await;

@@ -38,7 +38,7 @@ use crate::runtime::{ContainerRuntime, RuntimeError};
 use crate::tunnel::{TunnelError, TunnelManager};
 
 pub use backups::Reason;
-pub use mods::{ModBrowse, ModBrowseHit};
+pub use mods::{ModBrowse, ModBrowseHit, ModBrowsePage};
 pub use performance::{GameUse, HostUse, Resources};
 pub use recovery::ReconcileReport;
 pub use server::{Console, player_name};

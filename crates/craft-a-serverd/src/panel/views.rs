@@ -112,9 +112,15 @@ pub struct CreateBody<'a> {
     pub error: Option<&'a str>,
     pub name: &'a str,
     pub mc_version: &'a str,
-    /// Releases, then snapshots; the picked one is among them.
+    /// The newest releases, then older ones and snapshots in folded lists;
+    /// the picked one is among them.
     pub releases: Vec<String>,
+    pub older: Vec<String>,
     pub snapshots: Vec<String>,
+    /// The chosen version is an older release, so that list starts open.
+    pub older_picked: bool,
+    /// Only the built-in list could be offered.
+    pub short_list: bool,
     /// The chosen version is a snapshot, so that list starts open.
     pub snapshot_picked: bool,
     pub memory: Option<MemoryView>,
@@ -282,6 +288,13 @@ pub struct ModsBody<'a> {
     pub sort: &'a str,
     pub categories: Vec<ChipView>,
     pub sorts: Vec<ChipView>,
+    /// `Showing 1-20 of 345`.
+    pub total_text: Option<String>,
+    /// This same page again, for the retry link.
+    pub retry: String,
+    /// Some search text or switch is set, so "clear" makes sense.
+    pub filtered: bool,
+    pub installed_count: usize,
     pub prev: Option<String>,
     pub next: Option<String>,
     pub list: &'a str,

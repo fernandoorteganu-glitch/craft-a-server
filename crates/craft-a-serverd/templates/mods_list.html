@@ -1,20 +1,21 @@
 <section id="mods-list" class="card" hx-get="/partials/mods" hx-trigger="every 3s" hx-swap="outerHTML">
 {% include "banner.html" %}
-<h2>{{ crate::panel::strings::MODS_INSTALLED }}</h2>
+<h2>{{ crate::panel::strings::MODS_INSTALLED }}{% if !mods.is_empty() %} <span class="count">{{ mods.len() }}</span>{% endif %}</h2>
 {% if mods.is_empty() %}
 <p>{{ crate::panel::strings::MODS_NONE }}</p>
 {% else %}
 <ul class="list">
 {% for m in mods %}
-<li class="row">
+<li class="row inst">
+<div class="mod-icon mod-icon-sm"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z M3.3 7.5L12 12l8.7-4.5 M12 22V12"/></svg></div>
 <div class="grow">
-<strong>{{ m.title }}</strong> <span class="note">{{ m.version }}</span>
+<div class="inst-title"><strong>{{ m.title }}</strong> <span class="note">{{ m.version }}</span></div>
 {% if m.dependency %}<span class="tag">{{ crate::panel::strings::MODS_DEPENDENCY_TAG }}</span>{% endif %}
 {% if let Some(s) = m.status %}<span class="tag tag-warn">{{ s }}</span>{% endif %}
 {% if !m.required_by.is_empty() %}<div class="note">{{ crate::panel::strings::MODS_NEEDED_BY }} {{ m.required_by }}</div>{% endif %}
 </div>
 {% if banner.busy.is_none() %}
-<a class="btn btn-secondary" href="/mods/remove/{{ m.project_id }}">{{ crate::panel::strings::MODS_REMOVE }}</a>
+<a class="btn btn-secondary" href="/mods/remove/{{ m.project_id }}" aria-label="{{ crate::panel::strings::MODS_REMOVE }} {{ m.title }}">{{ crate::panel::strings::MODS_REMOVE }}</a>
 {% endif %}
 </li>
 {% endfor %}

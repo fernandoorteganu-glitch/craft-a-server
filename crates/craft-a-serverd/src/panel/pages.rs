@@ -23,6 +23,8 @@ struct Layout<'a> {
     /// Which navigation entry to mark as the current page.
     active: &'a str,
     content: &'a str,
+    /// Fingerprint of the stylesheet, for its cache-busting address.
+    css_version: &'static str,
 }
 
 /// Wraps a rendered body template in the base layout.
@@ -61,6 +63,7 @@ fn render<T: Template>(
         signed_in: session.is_some(),
         active,
         content: &content,
+        css_version: crate::panel::routes::assets::css_version(),
     };
     layout
         .render()

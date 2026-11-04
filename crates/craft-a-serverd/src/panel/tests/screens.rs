@@ -307,6 +307,63 @@ async fn the_create_form_offers_every_version_as_a_choice() -> TestResult {
 }
 
 #[tokio::test]
+async fn the_create_form_picks_the_newest_release_when_the_default_is_unknown() -> TestResult {
+    use crate::mods::testutil::Reply;
+    let (h, _dir) = screens_harness(|_| {});
+    // 14 releases (the built-in default is not among them) and a snapshot.
+    let mut list = vec![r#"{"version":"30.0-snapshot-1","stable":false}"#.to_owned()];
+    for minor in (0..14).rev() {
+        list.push(format!(r#"{{"version":"1.{minor}","stable":true}}"#));
+    }
+    h.net.route(
+        crate::versions::META_URL,
+        vec![Reply::Json(format!("[{}]", list.join(",")).into_bytes())],
+    );
+    let s = h.pair("Pixel").await;
+    let html = get(&h, &s, "/create").await.text();
+    assert!(html.contains("value=\"1.13\" checked"), "{html}");
+    assert_eq!(html.matches(" checked").count(), 1, "{html}");
+    // The 12 newest are up front, the other two are folded away.
+    assert!(html.contains("Older releases (2)"), "{html}");
+    assert!(!html.contains("Only a short list"), "{html}");
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_failed_submit_keeps_an_old_release_open_and_selected() -> TestResult {
+    use crate::mods::testutil::Reply;
+    let (h, _dir) = screens_harness(|_| {});
+    let mut list = Vec::new();
+    for minor in (0..14).rev() {
+        list.push(format!(r#"{{"version":"1.{minor}","stable":true}}"#));
+    }
+    h.net.route(
+        crate::versions::META_URL,
+        vec![Reply::Json(format!("[{}]", list.join(",")).into_bytes())],
+    );
+    let s = h.pair("Pixel").await;
+    let bad = post(&h, &s, "/server/create", "name=A&mc_version=1.0").await;
+    assert_eq!(bad.status, StatusCode::BAD_REQUEST);
+    let html = bad.text();
+    assert!(html.contains("value=\"1.0\" checked"), "{html}");
+    assert!(html.contains("<details open"), "{html}");
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_create_form_says_so_when_only_the_short_list_is_available() -> TestResult {
+    use crate::mods::testutil::Reply;
+    let (h, _dir) = screens_harness(|_| {});
+    h.net
+        .route(crate::versions::META_URL, vec![Reply::NetworkError]);
+    let s = h.pair("Pixel").await;
+    let html = get(&h, &s, "/create").await.text();
+    assert!(html.contains("value=\"26.3\" checked"), "{html}");
+    assert!(html.contains("only a short list is shown"), "{html}");
+    Ok(())
+}
+
+#[tokio::test]
 async fn a_server_cannot_be_created_without_ticking_the_eula() -> TestResult {
     let (h, _dir) = screens_harness(|_| {});
     let s = h.pair("Pixel").await;
@@ -1108,7 +1165,80 @@ async fn a_failing_search_shows_a_calm_message() -> TestResult {
     );
     let res = get(&h, &s, "/mods?q=alpha").await;
     assert_eq!(res.status, StatusCode::OK);
-    assert!(res.text().contains("role=\"alert\""));
+    let html = res.text();
+    assert!(html.contains("role=\"alert\""));
+    // A way to try the same page again.
+    assert!(html.contains("href=\"/mods?q=alpha\">Try again"), "{html}");
+    Ok(())
+}
+
+fn hit_json(id: &str, title: &str) -> serde_json::Value {
+    serde_json::json!({"project_id": id, "slug": title, "title": title, "description": "d",
+        "author": "a", "downloads": 1, "server_side": "required", "project_type": "mod"})
+}
+
+#[tokio::test]
+async fn paging_follows_the_total_so_the_last_page_has_no_next_link() -> TestResult {
+    let (h, _dir) = screens_harness(|_| {});
+    let s = h.pair("Pixel").await;
+    create(&h, &s).await;
+    let answer = |total: u64| {
+        serde_json::json!({"hits": [hit_json(ALPHA, "Alpha Mod"), hit_json(BETA, "Beta Lib")],
+            "offset": 0, "total_hits": total})
+    };
+    // 45 matches: page 0 and 1 have a Next link, page 2 (the last) does not.
+    h.net.api("/search", &answer(45));
+    let first = get(&h, &s, "/mods").await.text();
+    assert!(first.contains("Showing 1-2 of 45"), "{first}");
+    assert!(first.contains("page=1\">Next"), "{first}");
+    assert!(!first.contains(">Previous<"), "{first}");
+    let last = get(&h, &s, "/mods?page=2").await.text();
+    assert!(!last.contains(">Next<"), "{last}");
+    assert!(last.contains(">Previous<"), "{last}");
+    // Exactly one page of matches: no pager at all.
+    h.net.api("/search", &answer(20));
+    let one = get(&h, &s, "/mods").await.text();
+    assert!(!one.contains("aria-label=\"Pages\""), "{one}");
+    assert!(one.contains("1-2 of 20"), "{one}");
+    Ok(())
+}
+
+#[tokio::test]
+async fn an_empty_search_explains_and_offers_to_clear_the_filters() -> TestResult {
+    let (h, _dir) = screens_harness(|_| {});
+    let s = h.pair("Pixel").await;
+    create(&h, &s).await;
+    h.net
+        .api("/search", &serde_json::json!({"hits": [], "total_hits": 0}));
+    let filtered = get(&h, &s, "/mods?q=zzz&category=magic").await.text();
+    assert!(filtered.contains("No mods match"), "{filtered}");
+    assert!(
+        filtered.contains("href=\"/mods\">Clear search and filters"),
+        "{filtered}"
+    );
+    let plain = get(&h, &s, "/mods").await.text();
+    assert!(
+        plain.contains("No mods found for this Minecraft version."),
+        "{plain}"
+    );
+    assert!(!plain.contains("Clear search and filters"), "{plain}");
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_mods_screen_links_to_the_installed_list_with_its_count() -> TestResult {
+    let (h, _dir) = screens_harness(|_| {});
+    let s = h.pair("Pixel").await;
+    create(&h, &s).await;
+    seed_modrinth(&h);
+    let html = get(&h, &s, "/mods").await.text();
+    assert!(
+        html.contains("href=\"#mods-list\">Installed mods (0)"),
+        "{html}"
+    );
+    assert!(html.contains("id=\"mods-list\""), "{html}");
+    // Buttons say which mod they act on, for screen readers.
+    assert!(html.contains("aria-label=\"Install Beta Lib\""), "{html}");
     Ok(())
 }
 
@@ -1195,7 +1325,8 @@ async fn a_confirmed_install_runs_in_the_background_and_shows_in_the_list() -> T
 
     let res = post(&h, &s, &format!("/mods/install/{ALPHA}"), "confirm=yes").await;
     assert_eq!(res.status, StatusCode::SEE_OTHER, "{}", res.text());
-    assert_eq!(location(&res), "/mods");
+    // Back to the installed list, where the progress shows.
+    assert_eq!(location(&res), "/mods#mods-list");
     idle(&h, &s).await;
 
     let rows = h.svc.db().list_mods(&server_id(&h))?;
@@ -1230,6 +1361,7 @@ async fn removal_shows_dependents_and_runs_after_confirmation() -> TestResult {
     // Refused (without force the service says no); the records stay.
     let res = post(&h, &s, &format!("/mods/remove/{BETA}"), "confirm=yes").await;
     assert_eq!(res.status, StatusCode::SEE_OTHER);
+    assert_eq!(location(&res), "/mods#mods-list");
     idle(&h, &s).await;
     assert_eq!(h.svc.db().list_mods(&server_id(&h))?.len(), 2);
 

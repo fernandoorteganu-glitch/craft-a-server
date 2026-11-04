@@ -8,7 +8,7 @@
 //! The version a person picks is still checked on create like any other input.
 
 use std::io;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError, mpsc};
 use std::time::{Duration, Instant};
 
 use serde::Deserialize;
@@ -20,6 +20,9 @@ pub const META_URL: &str = "https://meta.fabricmc.net/v2/versions/game";
 const MAX_BODY: u64 = 1024 * 1024;
 const MAX_VERSIONS: usize = 2000;
 const FRESH_FOR: Duration = Duration::from_secs(6 * 60 * 60);
+/// The first call waits this long for the service before showing the
+/// built-in list (the fetch carries on and fills the cache).
+const FIRST_WAIT: Duration = Duration::from_secs(3);
 /// After a failed fetch the built-in list is used for this long.
 const RETRY_AFTER: Duration = Duration::from_secs(5 * 60);
 
@@ -78,54 +81,128 @@ struct Cached {
     list: Vec<GameVersion>,
 }
 
+#[derive(Default)]
+struct State {
+    cache: Option<Cached>,
+    /// A fetch is running on its own thread.
+    refreshing: bool,
+}
+
+struct Inner {
+    transport: Arc<dyn Transport>,
+    state: Mutex<State>,
+}
+
 /// Fetches and remembers the version list.
+///
+/// A person is waiting on the create page, so the catalog never makes them
+/// wait for the network for long: the fetch runs on its own thread, the first
+/// caller waits a few seconds at most, and an out-of-date list is served while
+/// a fresh one is fetched in the background.
 #[allow(missing_debug_implementations)] // holds a transport
 pub struct VersionCatalog {
-    transport: Arc<dyn Transport>,
-    cache: Mutex<Option<Cached>>,
+    inner: Arc<Inner>,
+    wait: Duration,
 }
 
 impl VersionCatalog {
     pub fn new(transport: Arc<dyn Transport>) -> VersionCatalog {
         VersionCatalog {
-            transport,
-            cache: Mutex::new(None),
+            inner: Arc::new(Inner {
+                transport,
+                state: Mutex::new(State::default()),
+            }),
+            wait: FIRST_WAIT,
         }
     }
 
-    /// The versions to offer, newest first. Blocking: run it off the async
-    /// threads. Never fails: it falls back to the built-in list.
+    /// How long the very first call waits for the service (tests shorten it).
+    #[must_use]
+    pub fn with_wait(mut self, wait: Duration) -> Self {
+        self.wait = wait;
+        self
+    }
+
+    /// The versions to offer, newest first. Blocking for at most the wait
+    /// given to [`Self::with_wait`]: run it off the async threads. Never
+    /// fails: it falls back to the built-in list.
     pub fn list(&self) -> Vec<GameVersion> {
-        let mut cache = self.cache.lock().unwrap_or_else(PoisonError::into_inner);
-        if let Some(c) = cache.as_ref() {
-            let limit = if c.ok { FRESH_FOR } else { RETRY_AFTER };
-            if c.at.elapsed() < limit {
-                return c.list.clone();
+        let rx = {
+            let mut st = self
+                .inner
+                .state
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
+            if let Some(c) = st.cache.as_ref() {
+                let limit = if c.ok { FRESH_FOR } else { RETRY_AFTER };
+                let list = c.list.clone();
+                if c.at.elapsed() >= limit && !st.refreshing {
+                    st.refreshing = true;
+                    drop(st);
+                    self.spawn_refresh(None);
+                }
+                return list;
             }
+            if st.refreshing {
+                // The first fetch is still running for someone else.
+                return fallback();
+            }
+            st.refreshing = true;
+            drop(st);
+            let (tx, rx) = mpsc::channel();
+            self.spawn_refresh(Some(tx));
+            rx
+        };
+        rx.recv_timeout(self.wait).unwrap_or_else(|_| fallback())
+    }
+
+    fn spawn_refresh(&self, reply: Option<mpsc::Sender<Vec<GameVersion>>>) {
+        let inner = Arc::clone(&self.inner);
+        let started = std::thread::Builder::new()
+            .name("game-versions".to_owned())
+            .spawn({
+                let inner = Arc::clone(&inner);
+                move || {
+                    let list = inner.refresh();
+                    if let Some(tx) = reply {
+                        let _ = tx.send(list);
+                    }
+                }
+            });
+        if started.is_err() {
+            // No thread to fetch on: remember that, and serve the built-in list.
+            inner.record(None);
         }
-        match self.fetch() {
-            Some(list) => {
-                *cache = Some(Cached {
-                    at: Instant::now(),
-                    ok: true,
-                    list: list.clone(),
-                });
-                list
-            }
-            None => {
-                // Keep an older good list over the built-in one.
-                let kept = cache
+    }
+}
+
+impl Inner {
+    fn refresh(&self) -> Vec<GameVersion> {
+        let fetched = self.fetch();
+        self.record(fetched)
+    }
+
+    /// Stores the outcome of a fetch and returns the list to serve.
+    fn record(&self, fetched: Option<Vec<GameVersion>>) -> Vec<GameVersion> {
+        let mut st = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        st.refreshing = false;
+        let (ok, list) = match fetched {
+            Some(list) => (true, list),
+            // Keep an older good list over the built-in one.
+            None => (
+                false,
+                st.cache
                     .as_ref()
                     .filter(|c| c.ok)
-                    .map_or_else(fallback, |c| c.list.clone());
-                *cache = Some(Cached {
-                    at: Instant::now(),
-                    ok: false,
-                    list: kept.clone(),
-                });
-                kept
-            }
-        }
+                    .map_or_else(fallback, |c| c.list.clone()),
+            ),
+        };
+        st.cache = Some(Cached {
+            at: Instant::now(),
+            ok,
+            list: list.clone(),
+        });
+        list
     }
 
     fn fetch(&self) -> Option<Vec<GameVersion>> {
@@ -211,5 +288,55 @@ mod tests {
             net.route(META_URL, vec![reply]);
             assert_eq!(catalog(&net).list(), fallback());
         }
+    }
+
+    /// Answers only once the gate is opened: a service that hangs.
+    struct Hanging {
+        open: Arc<(Mutex<bool>, std::sync::Condvar)>,
+    }
+
+    impl Transport for Hanging {
+        fn execute(
+            &self,
+            _req: &HttpRequest,
+            sink: &mut dyn io::Write,
+        ) -> Result<crate::mods::http::HttpMeta, crate::mods::http::HttpError> {
+            let (lock, cv) = &*self.open;
+            let mut open = lock.lock().unwrap_or_else(PoisonError::into_inner);
+            while !*open {
+                open = cv.wait(open).unwrap_or_else(PoisonError::into_inner);
+            }
+            let _ = sink.write_all(br#"[{"version":"27.1","stable":true}]"#);
+            Ok(crate::mods::http::HttpMeta {
+                status: 200,
+                retry_after_secs: None,
+                ratelimit_remaining: None,
+            })
+        }
+    }
+
+    #[test]
+    fn a_hanging_service_does_not_hold_the_page_up() {
+        let open = Arc::new((Mutex::new(false), std::sync::Condvar::new()));
+        let c = VersionCatalog::new(Arc::new(Hanging { open: open.clone() }))
+            .with_wait(Duration::from_millis(50));
+        let started = Instant::now();
+        assert_eq!(c.list(), fallback());
+        // A second caller while the fetch is still out does not wait at all.
+        assert_eq!(c.list(), fallback());
+        assert!(started.elapsed() < Duration::from_secs(2));
+
+        // The service wakes up; the fetch that was left running fills the cache.
+        *open.0.lock().unwrap_or_else(PoisonError::into_inner) = true;
+        open.1.notify_all();
+        let mut got = Vec::new();
+        for _ in 0..200 {
+            got = c.list();
+            if got.first().is_some_and(|v| v.id == "27.1") {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(got.first().map(|v| v.id.as_str()), Some("27.1"));
     }
 }

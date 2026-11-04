@@ -5,8 +5,14 @@
 <p class="alert" role="alert">{{ crate::panel::strings::MODS_CANNOT }}</p>
 <ul>{% for c in plan.conflicts %}<li>{{ c }}</li>{% endfor %}</ul>
 {% endif %}
-<p><strong>{{ plan.target.title }}</strong> {{ plan.target.version_number }} <span class="tag">{{ plan.target.version_type }}</span> <span class="note">{{ size }}</span></p>
-{% if let Some(old) = plan.replaces %}<p class="note">{{ crate::panel::strings::MODS_REPLACES }} {{ old }}</p>{% endif %}
+<div class="row inst summary">
+<div class="mod-icon mod-icon-sm"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z M3.3 7.5L12 12l8.7-4.5 M12 22V12"/></svg></div>
+<div class="grow">
+<div class="inst-title"><strong>{{ plan.target.title }}</strong> <span class="note">{{ plan.target.version_number }}</span></div>
+<div class="mod-meta"><span class="tag">{{ plan.target.version_type }}</span> <span class="note">{{ size }}</span></div>
+{% if let Some(old) = plan.replaces %}<div class="note">{{ crate::panel::strings::MODS_REPLACES }} {{ old }}</div>{% endif %}
+</div>
+</div>
 {% if !plan.dependencies.is_empty() %}
 <h2>{{ crate::panel::strings::MODS_ALSO_INSTALLED }}</h2>
 <ul class="list">

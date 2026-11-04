@@ -20,6 +20,8 @@ use super::model::{Project, SearchHit, SearchPage, Version, valid_id};
 use super::resolver::{PlannedFile, VersionSource};
 
 const MAX_RETRIES: u32 = 3;
+/// A person is waiting on a search page: one retry, then say so.
+const SEARCH_RETRIES: u32 = 1;
 const MAX_RETRY_WAIT: Duration = Duration::from_secs(30);
 /// Search results and single objects are small; version lists carry changelogs.
 const MAX_SMALL_BODY: u64 = 2 * 1024 * 1024;
@@ -162,6 +164,18 @@ impl ModrinthClient {
         body: Option<Vec<u8>>,
         max_bytes: u64,
     ) -> Result<Option<T>, ModError> {
+        self.api_with(method, path_and_query, body, max_bytes, MAX_RETRIES)
+    }
+
+    /// [`Self::api`] with its own retry allowance.
+    fn api_with<T: DeserializeOwned>(
+        &self,
+        method: Method,
+        path_and_query: &str,
+        body: Option<Vec<u8>>,
+        max_bytes: u64,
+        max_retries: u32,
+    ) -> Result<Option<T>, ModError> {
         let req = HttpRequest {
             method,
             url: format!("{API_BASE}{path_and_query}"),
@@ -185,14 +199,14 @@ impl ModrinthClient {
                                 .map_err(|_| ModError::BadResponse("invalid JSON".into()));
                         }
                         404 => return Ok(None),
-                        429 | 500..=599 if attempt < MAX_RETRIES => {
+                        429 | 500..=599 if attempt < max_retries => {
                             self.pause(Self::backoff(attempt, meta.retry_after_secs));
                             attempt += 1;
                         }
                         status => return Err(HttpError::Status(status).into()),
                     }
                 }
-                Err(HttpError::Network(_)) if attempt < MAX_RETRIES => {
+                Err(HttpError::Network(_)) if attempt < max_retries => {
                     self.pause(Self::backoff(attempt, None));
                     attempt += 1;
                 }
@@ -203,6 +217,11 @@ impl ModrinthClient {
 
     /// Searches Fabric mods that run on a server for the given Minecraft version.
     pub fn search(&self, q: SearchQuery<'_>) -> Result<Vec<SearchHit>, ModError> {
+        self.search_page(q).map(|(hits, _)| hits)
+    }
+
+    /// [`Self::search`] plus how many results Modrinth says match in all.
+    pub fn search_page(&self, q: SearchQuery<'_>) -> Result<(Vec<SearchHit>, u64), ModError> {
         check_mc_version(q.mc_version)?;
         let server_side: Vec<&str> = if q.include_unknown {
             vec!["server_side!=unsupported"]
@@ -234,21 +253,23 @@ impl ModrinthClient {
         ])
         .map_err(|_| ModError::invalid("the search text could not be used"))?;
         let page: SearchPage = self
-            .api(
+            .api_with(
                 Method::Get,
                 &format!("/search?{query}"),
                 None,
                 MAX_SMALL_BODY,
+                SEARCH_RETRIES,
             )?
             .ok_or_else(|| ModError::BadResponse("the search endpoint was not found".into()))?;
         // The facets already filter; check again because the answer is untrusted.
-        Ok(page
+        let hits = page
             .hits
             .into_iter()
             .filter(|h| {
                 valid_id(&h.project_id) && h.project_type == "mod" && h.server_side != "unsupported"
             })
-            .collect())
+            .collect();
+        Ok((hits, page.total_hits))
     }
 
     /// Downloads a project icon from the Modrinth CDN: the URL is checked
