@@ -112,6 +112,11 @@ pub struct CreateBody<'a> {
     pub error: Option<&'a str>,
     pub name: &'a str,
     pub mc_version: &'a str,
+    /// Releases, then snapshots; the picked one is among them.
+    pub releases: Vec<String>,
+    pub snapshots: Vec<String>,
+    /// The chosen version is a snapshot, so that list starts open.
+    pub snapshot_picked: bool,
     pub memory: Option<MemoryView>,
 }
 
@@ -198,10 +203,14 @@ pub struct ModHitView {
     pub downloads: String,
     pub side_label: &'static str,
     pub installed: bool,
+    /// Where the browser loads the icon from: this daemon, never the CDN.
+    pub icon: Option<String>,
+    pub categories: Vec<String>,
 }
 
 impl ModHitView {
-    pub fn new(h: &craft_a_server_core::ctl::ModHitInfo) -> ModHitView {
+    pub fn new(hit: &crate::lifecycle::ModBrowseHit) -> ModHitView {
+        let h = &hit.info;
         ModHitView {
             project_id: h.project_id.clone(),
             title: h.title.clone(),
@@ -214,8 +223,38 @@ impl ModHitView {
                 _ => s::MODS_SIDE_UNKNOWN,
             },
             installed: h.installed,
+            icon: hit.icon_url.as_deref().and_then(icon_src),
+            categories: hit
+                .categories
+                .iter()
+                .take(3)
+                .map(|c| category_label(c))
+                .collect(),
         }
     }
+}
+
+/// The panel's own address for a CDN icon.
+fn icon_src(cdn_url: &str) -> Option<String> {
+    let query = serde_urlencoded::to_string([("u", cdn_url)]).ok()?;
+    Some(format!("/mods/icon?{query}"))
+}
+
+/// `game-mechanics` -> `Game mechanics`.
+pub fn category_label(c: &str) -> String {
+    let mut out = c.replace('-', " ");
+    if let Some(first) = out.get_mut(..1) {
+        first.make_ascii_uppercase();
+    }
+    out
+}
+
+/// A filter or ordering link on the mod browser.
+#[derive(Debug)]
+pub struct ChipView {
+    pub label: String,
+    pub href: String,
+    pub active: bool,
 }
 
 /// `1.2M`, `34k`, `567`.
@@ -237,9 +276,14 @@ pub struct ModsBody<'a> {
     pub busy: bool,
     pub query: &'a str,
     pub include_unknown: bool,
-    /// `None` before any search.
     pub results: Option<Vec<ModHitView>>,
     pub search_error: Option<String>,
+    pub category: &'a str,
+    pub sort: &'a str,
+    pub categories: Vec<ChipView>,
+    pub sorts: Vec<ChipView>,
+    pub prev: Option<String>,
+    pub next: Option<String>,
     pub list: &'a str,
 }
 

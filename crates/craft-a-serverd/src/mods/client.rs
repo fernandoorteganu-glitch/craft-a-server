@@ -25,6 +25,8 @@ const MAX_RETRY_WAIT: Duration = Duration::from_secs(30);
 const MAX_SMALL_BODY: u64 = 2 * 1024 * 1024;
 const MAX_LIST_BODY: u64 = 8 * 1024 * 1024;
 const PROJECT_BATCH: usize = 40;
+/// Icons are small; a bigger "icon" is not one.
+const MAX_ICON_BYTES: u64 = 512 * 1024;
 
 /// What to search for.
 #[derive(Debug, Clone, Copy)]
@@ -35,7 +37,78 @@ pub struct SearchQuery<'a> {
     pub include_unknown: bool,
     pub offset: u32,
     pub limit: u32,
+    /// Only mods in this Modrinth category (one of [`CATEGORIES`]).
+    pub category: Option<&'a str>,
+    pub sort: SearchSort,
 }
+
+/// How results are ordered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SearchSort {
+    /// Best match for the text, or most downloaded when there is no text.
+    #[default]
+    Auto,
+    Downloads,
+    Follows,
+    Newest,
+    Updated,
+}
+
+impl SearchSort {
+    /// Parses the value used in the panel's links; unknown values mean `Auto`.
+    pub fn parse(v: &str) -> SearchSort {
+        match v {
+            "downloads" => SearchSort::Downloads,
+            "follows" => SearchSort::Follows,
+            "newest" => SearchSort::Newest,
+            "updated" => SearchSort::Updated,
+            _ => SearchSort::Auto,
+        }
+    }
+
+    pub fn key(self) -> &'static str {
+        match self {
+            SearchSort::Auto => "auto",
+            SearchSort::Downloads => "downloads",
+            SearchSort::Follows => "follows",
+            SearchSort::Newest => "newest",
+            SearchSort::Updated => "updated",
+        }
+    }
+
+    fn index(self, has_text: bool) -> &'static str {
+        match self {
+            SearchSort::Auto if has_text => "relevance",
+            SearchSort::Auto | SearchSort::Downloads => "downloads",
+            SearchSort::Follows => "follows",
+            SearchSort::Newest => "newest",
+            SearchSort::Updated => "updated",
+        }
+    }
+}
+
+/// Modrinth categories offered as filters (a fixed list: the value goes into
+/// a search facet, so nothing else is accepted).
+pub const CATEGORIES: &[&str] = &[
+    "adventure",
+    "decoration",
+    "economy",
+    "equipment",
+    "food",
+    "game-mechanics",
+    "library",
+    "magic",
+    "management",
+    "minigame",
+    "mobs",
+    "optimization",
+    "social",
+    "storage",
+    "technology",
+    "transportation",
+    "utility",
+    "worldgen",
+];
 
 type Sleeper = Box<dyn Fn(Duration) + Send + Sync>;
 
@@ -136,12 +209,16 @@ impl ModrinthClient {
         } else {
             vec!["server_side:required", "server_side:optional"]
         };
-        let facets = serde_json::json!([
-            ["project_type:mod"],
-            ["categories:fabric"],
-            [format!("versions:{}", q.mc_version)],
-            server_side,
-        ]);
+        let mut facets = vec![
+            vec!["project_type:mod".to_owned()],
+            vec!["categories:fabric".to_owned()],
+            vec![format!("versions:{}", q.mc_version)],
+            server_side.iter().map(|s| (*s).to_owned()).collect(),
+        ];
+        if let Some(cat) = q.category.filter(|c| CATEGORIES.contains(c)) {
+            facets.push(vec![format!("categories:{cat}")]);
+        }
+        let facets = serde_json::json!(facets);
         let text: String = q
             .text
             .chars()
@@ -151,14 +228,7 @@ impl ModrinthClient {
         let query = serde_urlencoded::to_string([
             ("query", text.as_str()),
             ("facets", facets.to_string().as_str()),
-            (
-                "index",
-                if text.trim().is_empty() {
-                    "downloads"
-                } else {
-                    "relevance"
-                },
-            ),
+            ("index", q.sort.index(!text.trim().is_empty())),
             ("limit", q.limit.clamp(1, 50).to_string().as_str()),
             ("offset", q.offset.min(10_000).to_string().as_str()),
         ])
@@ -179,6 +249,27 @@ impl ModrinthClient {
                 valid_id(&h.project_id) && h.project_type == "mod" && h.server_side != "unsupported"
             })
             .collect())
+    }
+
+    /// Downloads a project icon from the Modrinth CDN: the URL is checked
+    /// first, the size is capped, and only PNG, JPEG, GIF and WebP come back
+    /// (with the content type that goes with what the bytes really are).
+    pub fn icon(&self, url: &str) -> Result<Option<(Vec<u8>, &'static str)>, ModError> {
+        if !validate_cdn_url(url) {
+            return Err(ModError::invalid("that is not a Modrinth image address"));
+        }
+        let req = HttpRequest {
+            method: Method::Get,
+            url: url.to_owned(),
+            body: None,
+            max_bytes: MAX_ICON_BYTES,
+        };
+        let mut sink = CappedVec::new(MAX_ICON_BYTES);
+        let meta = self.transport.execute(&req, &mut sink)?;
+        if meta.status != 200 {
+            return Ok(None);
+        }
+        Ok(image_type(&sink.bytes).map(|t| (sink.bytes, t)))
     }
 
     pub fn project(&self, id_or_slug: &str) -> Result<Option<Project>, ModError> {
@@ -409,6 +500,22 @@ fn check_id(id: &str) -> Result<(), ModError> {
 }
 
 /// Minecraft versions are `26.3`, `1.21.11`, `24w14a`...: letters, digits, `.`, `_`, `-`.
+/// The content type of an image from its first bytes, for the formats a
+/// browser draws safely in an `<img>`. SVG is left out on purpose.
+pub fn image_type(bytes: &[u8]) -> Option<&'static str> {
+    if bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a]) {
+        Some("image/png")
+    } else if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
+        Some("image/jpeg")
+    } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+        Some("image/gif")
+    } else if bytes.get(..4) == Some(b"RIFF") && bytes.get(8..12) == Some(b"WEBP") {
+        Some("image/webp")
+    } else {
+        None
+    }
+}
+
 fn check_mc_version(v: &str) -> Result<(), ModError> {
     let ok = !v.is_empty()
         && v.len() <= 32

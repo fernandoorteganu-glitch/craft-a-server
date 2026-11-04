@@ -173,6 +173,7 @@ where
             get(screens::logs_tail::<R, P>),
         )
         .add("/mods", Access::Session, get(mods::page::<R, P>))
+        .add("/mods/icon", Access::Session, get(mods::icon::<R, P>))
         .add("/partials/mods", Access::Session, get(mods::list::<R, P>))
         .add("/mods/updates", Access::Session, get(mods::updates::<R, P>))
         .add(

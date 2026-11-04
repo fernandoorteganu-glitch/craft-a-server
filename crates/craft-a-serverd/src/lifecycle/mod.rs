@@ -38,6 +38,7 @@ use crate::runtime::{ContainerRuntime, RuntimeError};
 use crate::tunnel::{TunnelError, TunnelManager};
 
 pub use backups::Reason;
+pub use mods::{ModBrowse, ModBrowseHit};
 pub use performance::{GameUse, HostUse, Resources};
 pub use recovery::ReconcileReport;
 pub use server::{Console, player_name};
@@ -193,6 +194,8 @@ pub struct Service<R, P> {
     pub(crate) env: Env,
     /// Present when mod management is set up (see [`Service::with_modrinth`]).
     pub(crate) modrinth: Option<Arc<ModrinthClient>>,
+    /// Present when the list of game versions can be fetched.
+    pub(crate) versions: Option<Arc<crate::versions::VersionCatalog>>,
     /// Present when online play (the playit.gg tunnel) is set up.
     pub(crate) tunnel: Option<Arc<TunnelManager>>,
     locks: Mutex<HashMap<String, Arc<AsyncMutex<()>>>>,
@@ -209,6 +212,7 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
             probe,
             env,
             modrinth: None,
+            versions: None,
             tunnel: None,
             locks: Mutex::new(HashMap::new()),
             failures: Mutex::new(HashMap::new()),
@@ -221,6 +225,24 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
     pub fn with_modrinth(mut self, client: Arc<ModrinthClient>) -> Self {
         self.modrinth = Some(client);
         self
+    }
+
+    /// Enables the version picker's list of game versions.
+    #[must_use]
+    pub fn with_versions(mut self, catalog: Arc<crate::versions::VersionCatalog>) -> Self {
+        self.versions = Some(catalog);
+        self
+    }
+
+    /// The game versions to offer on the create screen, newest first. Falls
+    /// back to a short built-in list; never fails.
+    pub async fn game_versions(&self) -> Vec<crate::versions::GameVersion> {
+        let Some(catalog) = self.versions.clone() else {
+            return crate::versions::fallback();
+        };
+        tokio::task::spawn_blocking(move || catalog.list())
+            .await
+            .unwrap_or_else(|_| crate::versions::fallback())
     }
 
     /// Enables online play with the given tunnel manager.

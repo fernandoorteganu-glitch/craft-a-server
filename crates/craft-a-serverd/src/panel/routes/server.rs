@@ -245,7 +245,30 @@ where
     })
 }
 
-fn create_page<R, P>(
+/// The versions for the picker: `(releases, snapshots)`. The version already
+/// chosen is always in the list, even when the catalog does not know it (an
+/// older choice kept after a failed submit), so it stays selected.
+async fn version_choices<R, P>(state: &PanelState<R, P>, chosen: &str) -> (Vec<String>, Vec<String>)
+where
+    R: ContainerRuntime + 'static,
+    P: StatusProbe + 'static,
+{
+    let all = state.service().game_versions().await;
+    let known = all.iter().any(|v| v.id == chosen);
+    let mut releases: Vec<String> = Vec::new();
+    if !known && !chosen.is_empty() {
+        releases.push(chosen.to_owned());
+    }
+    releases.extend(all.iter().filter(|v| v.stable).map(|v| v.id.clone()));
+    let snapshots = all
+        .iter()
+        .filter(|v| !v.stable)
+        .map(|v| v.id.clone())
+        .collect();
+    (releases, snapshots)
+}
+
+async fn create_page<R, P>(
     state: &PanelState<R, P>,
     session: &AuthSession,
     error: Option<&str>,
@@ -256,11 +279,15 @@ where
     R: ContainerRuntime + 'static,
     P: StatusProbe + 'static,
 {
+    let (releases, snapshots) = version_choices(state, mc_version).await;
     let body = CreateBody {
         csrf_token: &session.csrf_token,
         error,
         name,
         mc_version,
+        snapshot_picked: snapshots.iter().any(|v| v == mc_version),
+        releases,
+        snapshots,
         memory: memory_view(state),
     };
     let mut res = pages::screen(s::CREATE_TITLE, "home", session, &body)?.into_response();
@@ -291,6 +318,7 @@ where
         s::CREATE_NAME_DEFAULT,
         s::CREATE_VERSION_DEFAULT,
     )
+    .await
 }
 
 #[derive(Debug, Deserialize)]
@@ -323,20 +351,15 @@ where
     if first_server(service)?.is_some() {
         return Err(PanelError::Conflict(s::ERR_SERVER_EXISTS.to_owned()));
     }
-    let form_error = |message: &str| {
-        create_page(
-            &state,
-            &session,
-            Some(message),
-            &form.name,
-            &form.mc_version,
-        )
+    let form_error = |message: String| {
+        let (state, session, form) = (&state, &session, &form);
+        async move { create_page(state, session, Some(&message), &form.name, &form.mc_version).await }
     };
     if form.eula.as_deref() != Some("yes") {
-        return form_error(s::ERR_EULA);
+        return form_error(s::ERR_EULA.to_owned()).await;
     }
     if service.memory_plan().is_err() {
-        return form_error(s::ERR_MEMORY);
+        return form_error(s::ERR_MEMORY.to_owned()).await;
     }
     match service
         .create_server(&form.name, &form.mc_version, true)
@@ -347,7 +370,7 @@ where
             Ok(redirect("/"))
         }
         Err(e @ crate::lifecycle::ServiceError::InvalidInput(_)) => {
-            form_error(&service_error_text(&e))
+            form_error(service_error_text(&e)).await
         }
         Err(e) => Err(service_error(&e)),
     }

@@ -45,6 +45,10 @@ pub struct SearchHit {
     pub server_side: String,
     #[serde(default)]
     pub project_type: String,
+    #[serde(default)]
+    pub icon_url: Option<String>,
+    #[serde(default)]
+    pub categories: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

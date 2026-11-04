@@ -11,14 +11,15 @@ use axum::response::{Html, IntoResponse, Response};
 use serde::Deserialize;
 
 use super::util::{first_server, redirect, render, require_server};
-use crate::lifecycle::StatusProbe;
+use crate::lifecycle::{ModBrowse, StatusProbe};
 use crate::mods::model::valid_id;
+use crate::mods::{CATEGORIES, SearchSort};
 use crate::panel::activity::spawn_action;
 use crate::panel::error::PanelError;
 use crate::panel::mapping::{service_error, service_error_text};
 use crate::panel::views::{
-    InstalledView, ModHitView, ModInstallBody, ModRemoveBody, ModUpdatesBody, ModsBody, ModsList,
-    format_bytes,
+    ChipView, InstalledView, ModHitView, ModInstallBody, ModRemoveBody, ModUpdatesBody, ModsBody,
+    ModsList, category_label, format_bytes,
 };
 use crate::panel::{AuthSession, PanelState, pages, strings as s};
 use crate::runtime::ContainerRuntime;
@@ -29,7 +30,54 @@ struct SearchParams {
     q: String,
     #[serde(default)]
     unknown: Option<String>,
+    #[serde(default)]
+    category: String,
+    #[serde(default)]
+    sort: String,
+    #[serde(default)]
+    page: u32,
 }
+
+/// The most pages the browser walks through (Modrinth caps the offset).
+const MAX_PAGE: u32 = 50;
+const PAGE_SIZE: u32 = 20;
+
+struct BrowseState<'a> {
+    query: &'a str,
+    include_unknown: bool,
+}
+
+/// `/mods?...` keeping the current search text and switches.
+fn browse_href(p: &BrowseState<'_>, category: &str, sort: &str, page: u32) -> String {
+    let mut pairs: Vec<(&str, String)> = Vec::new();
+    if !p.query.is_empty() {
+        pairs.push(("q", p.query.to_owned()));
+    }
+    if p.include_unknown {
+        pairs.push(("unknown", "1".to_owned()));
+    }
+    if !category.is_empty() {
+        pairs.push(("category", category.to_owned()));
+    }
+    if sort != "auto" {
+        pairs.push(("sort", sort.to_owned()));
+    }
+    if page > 0 {
+        pairs.push(("page", page.to_string()));
+    }
+    match serde_urlencoded::to_string(&pairs) {
+        Ok(q) if !q.is_empty() => format!("/mods?{q}"),
+        _ => "/mods".to_owned(),
+    }
+}
+
+const SORTS: [(SearchSort, &str); 5] = [
+    (SearchSort::Auto, s::MODS_SORT_AUTO),
+    (SearchSort::Downloads, s::MODS_SORT_DOWNLOADS),
+    (SearchSort::Follows, s::MODS_SORT_FOLLOWS),
+    (SearchSort::Newest, s::MODS_SORT_NEWEST),
+    (SearchSort::Updated, s::MODS_SORT_UPDATED),
+];
 
 #[derive(Debug, Default, Deserialize)]
 struct PlanParams {
@@ -105,15 +153,30 @@ where
         .take(100)
         .collect();
 
+    let category = CATEGORIES
+        .iter()
+        .find(|c| **c == params.category)
+        .copied()
+        .unwrap_or("");
+    let sort = SearchSort::parse(&params.sort);
+    let page = params.page.min(MAX_PAGE);
     let mut results = None;
     let mut search_error = None;
-    if let (Some(row), true) = (&server, !query.trim().is_empty()) {
-        match state
-            .service()
-            .mods_search(&row.id, &query, include_unknown, 0)
-            .await
-        {
-            Ok(hits) => results = Some(hits.iter().map(ModHitView::new).collect()),
+    let mut has_more = false;
+    // Browsing needs no search text: with none, the popular mods show.
+    if let Some(row) = &server {
+        let browse = ModBrowse {
+            text: &query,
+            include_unknown,
+            offset: page * PAGE_SIZE,
+            category: (!category.is_empty()).then_some(category),
+            sort,
+        };
+        match state.service().mods_browse(&row.id, browse).await {
+            Ok(hits) => {
+                has_more = hits.len() >= (PAGE_SIZE / 2) as usize && page < MAX_PAGE;
+                results = Some(hits.iter().map(ModHitView::new).collect());
+            }
             Err(e) => {
                 tracing::warn!(error = %e, "mod search failed");
                 search_error = Some(service_error_text(&e));
@@ -121,6 +184,28 @@ where
         }
     }
     let list = list_html(&state).await?;
+    let here = BrowseState {
+        query: &query,
+        include_unknown,
+    };
+    let mut categories = vec![ChipView {
+        label: s::MODS_CATEGORY_ALL.to_owned(),
+        href: browse_href(&here, "", sort.key(), 0),
+        active: category.is_empty(),
+    }];
+    categories.extend(CATEGORIES.iter().map(|c| ChipView {
+        label: category_label(c),
+        href: browse_href(&here, c, sort.key(), 0),
+        active: *c == category,
+    }));
+    let sorts = SORTS
+        .iter()
+        .map(|(k, label)| ChipView {
+            label: (*label).to_owned(),
+            href: browse_href(&here, category, k.key(), 0),
+            active: *k == sort,
+        })
+        .collect();
     let body = ModsBody {
         has_server: server.is_some(),
         busy: state.activity().is_busy(),
@@ -128,9 +213,57 @@ where
         include_unknown,
         results,
         search_error,
+        category,
+        sort: sort.key(),
+        categories,
+        sorts,
+        prev: (page > 0).then(|| browse_href(&here, category, sort.key(), page - 1)),
+        next: has_more.then(|| browse_href(&here, category, sort.key(), page + 1)),
         list: &list,
     };
     Ok(pages::screen(s::MODS_TITLE, "mods", &session, &body)?.into_response())
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct IconParams {
+    #[serde(default)]
+    u: String,
+}
+
+/// `GET /mods/icon?u=<Modrinth CDN address>`: a project icon, fetched by the
+/// daemon so the browser never talks to the CDN (the CSP allows images from
+/// this origin only). Only `cdn.modrinth.com` addresses are fetched, and only
+/// real PNG, JPEG, GIF or WebP bytes are passed on.
+pub async fn icon<R, P>(
+    State(state): State<PanelState<R, P>>,
+    _session: AuthSession,
+    RawQuery(raw): RawQuery,
+) -> Result<Response, PanelError>
+where
+    R: ContainerRuntime + 'static,
+    P: StatusProbe + 'static,
+{
+    let params: IconParams = parse(raw.as_deref());
+    match state.service().mod_icon(&params.u).await {
+        Ok(Some((bytes, content_type))) => {
+            let mut res = bytes.into_response();
+            let h = res.headers_mut();
+            h.insert(
+                axum::http::header::CONTENT_TYPE,
+                axum::http::HeaderValue::from_static(content_type),
+            );
+            h.insert(
+                axum::http::header::CACHE_CONTROL,
+                axum::http::HeaderValue::from_static("private, max-age=86400"),
+            );
+            Ok(res)
+        }
+        Ok(None) => Err(PanelError::NotFound),
+        Err(e) => {
+            tracing::debug!(error = %e, "mod icon not served");
+            Err(PanelError::NotFound)
+        }
+    }
 }
 
 /// `GET /partials/mods`: polled by the installed list for progress.

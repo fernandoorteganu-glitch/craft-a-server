@@ -32,13 +32,16 @@ use craft_a_server_core::model::ServerState;
 use super::backups::Reason;
 use super::{Result, Service, ServiceError, StatusProbe};
 use crate::db::{ModChange, ModRow};
+use crate::mods::http::validate_cdn_url;
 use crate::mods::logic::{
     clean_text, dependents_outside, describe_conflict, orphans_after_removal, unique_file_name,
 };
 use crate::mods::model::{Project, VersionType};
 use crate::mods::resolver::{self, InstalledRef, Options, PlannedMod};
 use crate::mods::txn::{self, ApplyError, Journal, Stage};
-use crate::mods::{ClientSource, ModError, ModrinthClient, SearchQuery, files};
+use crate::mods::{
+    CATEGORIES, ClientSource, ModError, ModrinthClient, SearchQuery, SearchSort, files,
+};
 use crate::runtime::ContainerRuntime;
 
 /// Extra start-up time allowed per mod after a change.
@@ -48,6 +51,26 @@ const SEARCH_PAGE: u32 = 20;
 const MAX_TITLE: usize = 80;
 const MAX_DESCRIPTION: usize = 300;
 const MAX_REASON: usize = 400;
+
+/// What the mod browser asks for.
+#[derive(Debug, Clone, Copy)]
+pub struct ModBrowse<'a> {
+    pub text: &'a str,
+    pub include_unknown: bool,
+    pub offset: u32,
+    pub category: Option<&'a str>,
+    pub sort: SearchSort,
+}
+
+/// A search result with what the browser cards add to the CLI's view.
+#[derive(Debug, Clone)]
+pub struct ModBrowseHit {
+    pub info: ModHitInfo,
+    /// A Modrinth CDN address that passed the same check as downloads.
+    pub icon_url: Option<String>,
+    /// Known Modrinth categories only.
+    pub categories: Vec<String>,
+}
 
 /// A mod resolved for installing, with display names.
 struct Prepared {
@@ -92,6 +115,31 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
         include_unknown: bool,
         offset: u32,
     ) -> Result<Vec<ModHitInfo>> {
+        let browse = ModBrowse {
+            text,
+            include_unknown,
+            offset,
+            category: None,
+            sort: SearchSort::Auto,
+        };
+        Ok(self
+            .mods_browse(id, browse)
+            .await?
+            .into_iter()
+            .map(|h| h.info)
+            .collect())
+    }
+
+    /// The mod browser's search: filters, ordering and what a card shows.
+    pub async fn mods_browse(&self, id: &str, q: ModBrowse<'_>) -> Result<Vec<ModBrowseHit>> {
+        let ModBrowse {
+            text,
+            include_unknown,
+            offset,
+            category,
+            sort,
+        } = q;
+        let category = category.map(str::to_owned);
         let row = self.get_row(id)?;
         let client = self.modrinth_client()?;
         let text = text.to_owned();
@@ -103,6 +151,8 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
                 include_unknown,
                 offset,
                 limit: SEARCH_PAGE,
+                category: category.as_deref(),
+                sort,
             })
         })
         .await??;
@@ -114,21 +164,36 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
             .collect();
         Ok(hits
             .into_iter()
-            .map(|h| ModHitInfo {
-                installed: installed.contains(&h.project_id),
-                project_id: h.project_id,
-                slug: clean_text(&h.slug, MAX_TITLE),
-                title: clean_text(&h.title, MAX_TITLE),
-                description: clean_text(&h.description, MAX_DESCRIPTION),
-                author: clean_text(&h.author, MAX_TITLE),
-                downloads: h.downloads,
-                server_side: if h.server_side == "required" || h.server_side == "optional" {
-                    h.server_side
-                } else {
-                    "unknown".to_owned()
+            .map(|h| ModBrowseHit {
+                icon_url: h.icon_url.filter(|u| validate_cdn_url(u)),
+                categories: h
+                    .categories
+                    .into_iter()
+                    .filter(|c| CATEGORIES.contains(&c.as_str()))
+                    .collect(),
+                info: ModHitInfo {
+                    installed: installed.contains(&h.project_id),
+                    project_id: h.project_id,
+                    slug: clean_text(&h.slug, MAX_TITLE),
+                    title: clean_text(&h.title, MAX_TITLE),
+                    description: clean_text(&h.description, MAX_DESCRIPTION),
+                    author: clean_text(&h.author, MAX_TITLE),
+                    downloads: h.downloads,
+                    server_side: if h.server_side == "required" || h.server_side == "optional" {
+                        h.server_side
+                    } else {
+                        "unknown".to_owned()
+                    },
                 },
             })
             .collect())
+    }
+
+    /// A project icon for the panel, fetched from the Modrinth CDN.
+    pub async fn mod_icon(&self, url: &str) -> Result<Option<(Vec<u8>, &'static str)>> {
+        let client = self.modrinth_client()?;
+        let url = url.to_owned();
+        Ok(blocking(move || client.icon(&url)).await??)
     }
 
     /// The recorded mods plus any jars in the folder that we did not install.

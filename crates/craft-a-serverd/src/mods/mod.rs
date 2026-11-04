@@ -27,7 +27,7 @@ pub mod txn;
 #[cfg(test)]
 pub(crate) mod testutil;
 
-pub use client::{ClientSource, ModrinthClient, SearchQuery, user_agent};
+pub use client::{CATEGORIES, ClientSource, ModrinthClient, SearchQuery, SearchSort, user_agent};
 pub use error::ModError;
 pub use http::{HttpError, HttpMeta, HttpRequest, Method, Transport, UreqTransport};
 

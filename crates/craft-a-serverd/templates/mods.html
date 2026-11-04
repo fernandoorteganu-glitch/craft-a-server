@@ -1,45 +1,74 @@
 {% import "macros.html" as m %}
+{% if !has_server %}
 <section class="card">
 <h1>{{ crate::panel::strings::MODS_TITLE }}</h1>
-{% if !has_server %}
 <p>{{ crate::panel::strings::ERR_NO_SERVER }}.</p>
+</section>
 {% else %}
+<div class="grid grid-main">
+<div class="stack">
+<section class="card">
+<h1>{{ crate::panel::strings::MODS_BROWSE_TITLE }}</h1>
 <p class="note">{{ crate::panel::strings::MODS_NOTE }}</p>
-<form method="get" action="/mods" class="form" autocomplete="off">
-<label for="mods_q">{{ crate::panel::strings::MODS_SEARCH_LABEL }}</label>
-<input id="mods_q" name="q" type="text" maxlength="100" value="{{ query }}" autocapitalize="none" autocorrect="off" spellcheck="false">
-<label class="check"><input type="checkbox" name="unknown" value="1"{% if include_unknown %} checked{% endif %}> {{ crate::panel::strings::MODS_INCLUDE_UNKNOWN }}</label>
+<form method="get" action="/mods" class="searchbar" autocomplete="off" role="search">
+<label class="sr" for="mods_q">{{ crate::panel::strings::MODS_SEARCH_LABEL }}</label>
+<input id="mods_q" name="q" type="text" maxlength="100" value="{{ query }}" placeholder="{{ crate::panel::strings::MODS_SEARCH_LABEL }}" autocapitalize="none" autocorrect="off" spellcheck="false">
+{% if !category.is_empty() %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
+{% if sort != "auto" %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
 <button type="submit" class="btn">{{ crate::panel::strings::MODS_SEARCH }}</button>
+<label class="check searchbar-opt"><input type="checkbox" name="unknown" value="1"{% if include_unknown %} checked{% endif %}> {{ crate::panel::strings::MODS_INCLUDE_UNKNOWN }}</label>
 </form>
-<p><a class="btn btn-secondary" href="/mods/updates">{{ crate::panel::strings::MODS_CHECK_UPDATES }}</a></p>
-{% endif %}
+<nav class="chips" aria-label="Categories">
+{% for c in categories %}<a class="chip" href="{{ c.href }}"{% if c.active %} aria-current="true"{% endif %}>{{ c.label }}</a>{% endfor %}
+</nav>
+<nav class="chips chips-sort" aria-label="Order">
+{% for c in sorts %}<a class="chip" href="{{ c.href }}"{% if c.active %} aria-current="true"{% endif %}>{{ c.label }}</a>{% endfor %}
+</nav>
 </section>
 {% if let Some(err) = search_error %}
 <section class="card"><p class="alert" role="alert">{{ err }}</p></section>
 {% endif %}
 {% if let Some(found) = results %}
-<section class="card">
-<h2>{{ crate::panel::strings::MODS_RESULTS }}</h2>
 {% if found.is_empty() %}
-<p>{{ crate::panel::strings::MODS_NO_RESULTS }}</p>
+<section class="card"><p>{{ crate::panel::strings::MODS_NO_RESULTS }}</p></section>
 {% else %}
-<ul class="list">
+<ul class="mods-grid">
 {% for h in found %}
-<li class="row">
-<div class="grow">
-<strong>{{ h.title }}</strong> <span class="tag">{{ h.side_label }}</span>
-<div class="note">{{ h.author }} &middot; {{ h.downloads }}</div>
-<div>{{ h.description }}</div>
+<li class="mod">
+<div class="mod-icon">
+{% if let Some(src) = h.icon %}<img src="{{ src }}" alt="" width="64" height="64" loading="lazy" decoding="async">{% else %}<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z M3.3 7.5L12 12l8.7-4.5 M12 22V12"/></svg>{% endif %}
 </div>
+<div class="mod-body">
+<div class="mod-title"><strong>{{ h.title }}</strong> <span class="note">{{ h.author }}</span></div>
+<p class="mod-desc">{{ h.description }}</p>
+<div class="mod-meta">
+<span class="tag">{{ h.side_label }}</span>
+{% for c in h.categories %}<span class="tag">{{ c }}</span>{% endfor %}
+<span class="note">{{ h.downloads }}</span>
+</div>
+</div>
+<div class="mod-act">
 {% if h.installed %}
 <span class="tag">{{ crate::panel::strings::MODS_INSTALLED_TAG }}</span>
 {% else if !busy %}
 <a class="btn" href="/mods/install/{{ h.project_id }}">{{ crate::panel::strings::MODS_INSTALL }}</a>
 {% endif %}
+</div>
 </li>
 {% endfor %}
 </ul>
+{% if prev.is_some() || next.is_some() %}
+<nav class="pager" aria-label="Pages">
+{% if let Some(href) = prev %}<a class="btn btn-secondary" href="{{ href }}">{{ crate::panel::strings::MODS_PREV }}</a>{% endif %}
+{% if let Some(href) = next %}<a class="btn btn-secondary" href="{{ href }}">{{ crate::panel::strings::MODS_NEXT }}</a>{% endif %}
+</nav>
 {% endif %}
-</section>
 {% endif %}
+{% endif %}
+</div>
+<div class="stack aside">
 {{ list|safe }}
+<p><a class="btn btn-secondary" href="/mods/updates">{{ crate::panel::strings::MODS_CHECK_UPDATES }}</a></p>
+</div>
+</div>
+{% endif %}

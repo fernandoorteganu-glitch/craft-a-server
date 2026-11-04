@@ -8,9 +8,25 @@
 {{ m::csrf_field(csrf_token) }}
 <label for="name">{{ crate::panel::strings::CREATE_NAME_LABEL }}</label>
 <input id="name" name="name" type="text" maxlength="48" value="{{ name }}" required>
-<label for="mc_version">{{ crate::panel::strings::CREATE_VERSION_LABEL }}</label>
-<input id="mc_version" name="mc_version" type="text" maxlength="32" value="{{ mc_version }}" autocapitalize="none" autocorrect="off" spellcheck="false" aria-describedby="mc_version_help" required>
-<p id="mc_version_help" class="note">{{ crate::panel::strings::CREATE_VERSION_HELP }}</p>
+<fieldset class="versions">
+<legend>{{ crate::panel::strings::CREATE_VERSION_LABEL }}</legend>
+<div class="vgrid">
+{% for v in releases %}
+<label class="vopt"><input type="radio" name="mc_version" value="{{ v }}"{% if v.as_str() == mc_version %} checked{% endif %} required><span>{{ v }}</span></label>
+{% endfor %}
+</div>
+{% if !snapshots.is_empty() %}
+<details{% if snapshot_picked %} open{% endif %}>
+<summary>{{ crate::panel::strings::CREATE_VERSION_SNAPSHOTS }} ({{ snapshots.len() }})</summary>
+<div class="vgrid">
+{% for v in snapshots %}
+<label class="vopt"><input type="radio" name="mc_version" value="{{ v }}"{% if v.as_str() == mc_version %} checked{% endif %} required><span>{{ v }}</span></label>
+{% endfor %}
+</div>
+</details>
+{% endif %}
+<p class="note">{{ crate::panel::strings::CREATE_VERSION_HELP }}</p>
+</fieldset>
 <p>{{ crate::panel::strings::CREATE_MEMORY }}:
 {% if let Some(mem) = memory %}
 <strong>{{ mem.text }}</strong>

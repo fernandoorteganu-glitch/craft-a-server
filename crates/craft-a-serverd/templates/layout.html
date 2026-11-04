@@ -13,25 +13,29 @@
 </head>
 {# Every htmx request from a signed-in page carries the CSRF token via this header. #}
 <body{% if let Some(token) = csrf_token %} hx-headers='{"X-CSRF-Token": "{{ token }}"}'{% endif %}>
+<div class="shell{% if !signed_in %} shell-out{% endif %}">
 <header class="bar">
-<a class="brand" href="/">{{ crate::panel::strings::APP_NAME }}</a>
+<a class="brand" href="/"><svg class="ico brand-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z M3.3 7.5L12 12l8.7-4.5 M12 22V12"/></svg><span>{{ crate::panel::strings::APP_NAME }}</span></a>
 {% if signed_in %}
 <nav class="nav" aria-label="Main">
-<a href="/"{% if active == "home" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_HOME }}</a>
-<a href="/backups"{% if active == "backups" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_BACKUPS }}</a>
-<a href="/players"{% if active == "players" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_PLAYERS }}</a>
-<a href="/logs"{% if active == "logs" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_LOGS }}</a>
-<a href="/mods"{% if active == "mods" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_MODS }}</a>
-<a href="/performance"{% if active == "performance" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_PERFORMANCE }}</a>
-<a href="/world"{% if active == "world" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_WORLD }}</a>
-<a href="/online"{% if active == "online" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_ONLINE }}</a>
-<a href="/settings/devices"{% if active == "settings" %} aria-current="page"{% endif %}>{{ crate::panel::strings::NAV_SETTINGS }}</a>
+<a href="/"{% if active == "home" %} aria-current="page"{% endif %}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><span>{{ crate::panel::strings::NAV_HOME }}</span></a>
+<a href="/backups"{% if active == "backups" %} aria-current="page"{% endif %}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v4H3z M5 8v12h14V8 M10 12h4"/></svg><span>{{ crate::panel::strings::NAV_BACKUPS }}</span></a>
+<a href="/players"{% if active == "players" %} aria-current="page"{% endif %}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M22 21v-2a4 4 0 0 0-3-3.9 M16 3.1a4 4 0 0 1 0 7.8"/></svg><span>{{ crate::panel::strings::NAV_PLAYERS }}</span></a>
+<a href="/logs"{% if active == "logs" %} aria-current="page"{% endif %}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l6-6-6-6 M12 19h8"/></svg><span>{{ crate::panel::strings::NAV_LOGS }}</span></a>
+<a href="/mods"{% if active == "mods" %} aria-current="page"{% endif %}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z M3.3 7.5L12 12l8.7-4.5 M12 22V12"/></svg><span>{{ crate::panel::strings::NAV_MODS }}</span></a>
+<a href="/performance"{% if active == "performance" %} aria-current="page"{% endif %}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>{{ crate::panel::strings::NAV_PERFORMANCE }}</span></a>
+<a href="/world"{% if active == "world" %} aria-current="page"{% endif %}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M2 12h20 M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/></svg><span>{{ crate::panel::strings::NAV_WORLD }}</span></a>
+<a href="/online"{% if active == "online" %} aria-current="page"{% endif %}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5a10 10 0 0 1 14 0 M8.5 16a5 5 0 0 1 7 0 M12 20h.01 M2 9a15 15 0 0 1 20 0"/></svg><span>{{ crate::panel::strings::NAV_ONLINE }}</span></a>
+<a href="/settings/devices"{% if active == "settings" %} aria-current="page"{% endif %}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7 M4 10V3 M12 21v-9 M12 8V3 M20 21v-5 M20 12V3 M1 14h6 M9 8h6 M17 16h6"/></svg><span>{{ crate::panel::strings::NAV_SETTINGS }}</span></a>
 </nav>
 {% endif %}
 </header>
+<div class="content">
 <main class="main">
 {{ content|safe }}
 </main>
 <footer class="foot">{{ crate::panel::strings::DISCLAIMER }}</footer>
+</div>
+</div>
 </body>
 </html>

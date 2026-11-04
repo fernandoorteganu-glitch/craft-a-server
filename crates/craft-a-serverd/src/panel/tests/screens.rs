@@ -260,11 +260,49 @@ async fn the_create_form_shows_memory_and_an_unticked_eula() -> TestResult {
     // 8 GiB machine in the harness: 5888 MiB of heap.
     assert!(html.contains("5.7 GiB"), "{html}");
     assert!(html.contains("name=\"eula\" type=\"checkbox\" value=\"yes\" required"));
+    let eula_tag = html
+        .split("<input id=\"eula\"")
+        .nth(1)
+        .and_then(|r| r.split('>').next())
+        .unwrap_or_default();
     assert!(
-        !html.contains("checked"),
+        !eula_tag.contains("checked"),
         "the EULA box must start unticked"
     );
     assert!(html.contains("name=\"csrf_token\""));
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_create_form_offers_every_version_as_a_choice() -> TestResult {
+    use crate::mods::testutil::Reply;
+    let (h, _dir) = screens_harness(|_| {});
+    h.net.route(
+        crate::versions::META_URL,
+        vec![Reply::Json(
+            br#"[{"version":"26.4-snapshot-2","stable":false},{"version":"26.3","stable":true},
+                 {"version":"1.21.5","stable":true}]"#
+                .to_vec(),
+        )],
+    );
+    let s = h.pair("Pixel").await;
+    let html = get(&h, &s, "/create").await.text();
+    for v in ["26.3", "1.21.5", "26.4-snapshot-2"] {
+        assert!(
+            html.contains(&format!("type=\"radio\" name=\"mc_version\" value=\"{v}\"")),
+            "{v}
+{html}"
+        );
+    }
+    // The default is picked, and snapshots wait in their own folded list.
+    assert!(html.contains("value=\"26.3\" checked"), "{html}");
+    assert!(html.contains("Snapshots and pre-releases (1)"), "{html}");
+    assert!(!html.contains("<details open"), "{html}");
+
+    // A bad choice comes back to the form with the same choice kept.
+    let bad = post(&h, &s, "/server/create", "name=A&mc_version=1.21.5").await;
+    assert_eq!(bad.status, StatusCode::BAD_REQUEST);
+    assert!(bad.text().contains("value=\"1.21.5\" checked"));
     Ok(())
 }
 
@@ -859,14 +897,11 @@ async fn settings_show_the_ip_url_an_inline_qr_and_the_devices() -> TestResult {
     let html = res.text();
     assert!(html.contains("http://craft-a-server.local:8080/"), "{html}");
     assert!(html.contains("http://192.168.1.50:8080/"), "{html}");
-    assert!(
-        html.contains("<svg ") && html.contains("class=\"qr\""),
-        "{html}"
-    );
+    assert!(html.contains("class=\"qr\""), "{html}");
     assert!(html.contains("Pixel") && html.contains("Tablet") && html.contains("this phone"));
     // The QR carries the address only; no cookie, token or pairing code.
     let svg = html
-        .split("<svg ")
+        .split("class=\"qr\"")
         .nth(1)
         .and_then(|r| r.split("</svg>").next())
         .unwrap_or_default();
@@ -898,7 +933,7 @@ async fn settings_explain_when_no_ip_address_is_known() -> TestResult {
     let s = h.pair("Pixel").await;
     let html = get(&h, &s, "/settings/devices").await.text();
     assert!(html.contains("could not be determined"), "{html}");
-    assert!(!html.contains("<svg "));
+    assert!(!html.contains("class=\"qr\""));
     Ok(())
 }
 
@@ -958,7 +993,7 @@ async fn the_mods_screen_without_a_server_says_so_and_has_no_form() -> TestResul
 }
 
 #[tokio::test]
-async fn search_results_are_escaped_badged_and_have_no_images() -> TestResult {
+async fn search_results_are_escaped_badged_and_icons_come_through_the_daemon() -> TestResult {
     let (h, _dir) = screens_harness(|_| {});
     let s = h.pair("Pixel").await;
     create(&h, &s).await;
@@ -967,14 +1002,97 @@ async fn search_results_are_escaped_badged_and_have_no_images() -> TestResult {
     assert_eq!(res.status, StatusCode::OK);
     let html = res.text();
     assert!(html.contains("&#60;img"), "{html}");
-    assert!(!html.contains("<img"), "{html}");
+    // The one icon is loaded from this daemon, never from the CDN.
+    assert_eq!(html.matches("<img ").count(), 1, "{html}");
+    assert!(html.contains("<img src=\"/mods/icon?u=https%3A%2F%2Fcdn.modrinth.com"));
     assert!(!html.contains("<b>bold</b>") && !html.contains("<i>me</i>"));
     assert!(html.contains("Server: optional") && html.contains("Server: required"));
     assert!(html.contains("1.2M downloads"), "{html}");
     assert!(html.contains(&format!("/mods/install/{ALPHA}")));
+    assert!(!html.contains("src=\"https://"), "no remote icon is loaded");
+    Ok(())
+}
+
+const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0];
+
+#[tokio::test]
+async fn the_icon_route_serves_only_real_images_from_the_modrinth_cdn() -> TestResult {
+    let (h, _dir) = screens_harness(|_| {});
+    let s = h.pair("Pixel").await;
+    create(&h, &s).await;
+    let ok = "https://cdn.modrinth.com/data/AAAAAAAA/icon.png";
+    h.net.cdn(ok, PNG);
+    h.net.cdn(
+        "https://cdn.modrinth.com/data/AAAAAAAA/page.html",
+        b"<html>",
+    );
+    let enc = |u: &str| serde_urlencoded::to_string([("u", u)]).unwrap_or_default();
+
+    let res = get(&h, &s, &format!("/mods/icon?{}", enc(ok))).await;
+    assert_eq!(res.status, StatusCode::OK);
+    assert_eq!(res.header("content-type"), Some("image/png"));
+    assert_eq!(res.body, PNG);
+
+    for bad in [
+        "https://evil.example/icon.png",
+        "http://cdn.modrinth.com/data/x.png",
+        "https://cdn.modrinth.com/../x.png",
+        "https://cdn.modrinth.com/data/AAAAAAAA/page.html",
+        "",
+    ] {
+        let res = get(&h, &s, &format!("/mods/icon?{}", enc(bad))).await;
+        assert_eq!(res.status, StatusCode::NOT_FOUND, "{bad}");
+    }
     assert!(
-        !html.contains("cdn.modrinth.com"),
-        "no remote icon is loaded"
+        h.net
+            .request_urls()
+            .iter()
+            .all(|u| u.starts_with("https://cdn.modrinth.com/")),
+        "nothing else is fetched"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_mod_browser_filters_orders_and_pages() -> TestResult {
+    let (h, _dir) = screens_harness(|_| {});
+    let s = h.pair("Pixel").await;
+    create(&h, &s).await;
+    seed_modrinth(&h);
+
+    // No search text still lists mods (the popular ones).
+    let html = get(&h, &s, "/mods").await.text();
+    assert!(html.contains("Beta Lib"), "{html}");
+    assert!(html.contains("href=\"/mods?category=magic\""), "{html}");
+    assert!(html.contains("sort=newest"), "{html}");
+
+    // The filter and the order reach Modrinth; junk values are ignored.
+    get(&h, &s, "/mods?category=magic&sort=newest&page=2").await;
+    get(&h, &s, "/mods?category=%22%5D%2C%5B%22x&sort=zzz").await;
+    let urls = h.net.request_urls();
+    let searches: Vec<String> = urls
+        .iter()
+        .filter(|u| u.contains("/search?"))
+        .map(|u| {
+            let q = u.split_once('?').map_or("", |(_, q)| q);
+            let pairs: Vec<(String, String)> = serde_urlencoded::from_str(q).unwrap_or_default();
+            pairs
+                .iter()
+                .map(|(k, v)| format!("{k}={v}"))
+                .collect::<Vec<_>>()
+                .join("&")
+        })
+        .collect();
+    let magic = searches.iter().find(|q| q.contains("categories:magic"));
+    assert!(
+        magic.is_some_and(|q| q.contains("index=newest") && q.contains("offset=40")),
+        "{searches:?}"
+    );
+    assert!(
+        searches
+            .last()
+            .is_some_and(|q| !q.contains("x\"") && q.contains("index=downloads")),
+        "{searches:?}"
     );
     Ok(())
 }

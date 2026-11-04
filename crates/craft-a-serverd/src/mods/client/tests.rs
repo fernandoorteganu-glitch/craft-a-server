@@ -26,6 +26,8 @@ fn query(text: &str, unknown: bool) -> SearchQuery<'_> {
         include_unknown: unknown,
         offset: 0,
         limit: 20,
+        category: None,
+        sort: SearchSort::Auto,
     }
 }
 

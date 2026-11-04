@@ -116,7 +116,8 @@ pub const CREATE_NAME_DEFAULT: &str = "My server";
 pub const CREATE_VERSION_LABEL: &str = "Minecraft version";
 pub const CREATE_VERSION_DEFAULT: &str = "26.3";
 pub const CREATE_VERSION_HELP: &str =
-    "Java Edition, for example 26.3. Players need the same version.";
+    "Java Edition. Players need to join with this same version. Releases are the safe choice.";
+pub const CREATE_VERSION_SNAPSHOTS: &str = "Snapshots and pre-releases";
 pub const CREATE_MEMORY: &str = "Memory for the game";
 pub const CREATE_MEMORY_LOW: &str =
     "This machine has little memory. Expect the server to struggle with several players.";
@@ -213,6 +214,15 @@ pub const MODS_REMOVE_CONFIRM: &str = "Yes, remove and restart";
 pub const MODS_UPDATES_TITLE: &str = "Mod updates";
 pub const MODS_UP_TO_DATE: &str = "All mods are up to date.";
 pub const MODS_UPDATE: &str = "Update";
+pub const MODS_CATEGORY_ALL: &str = "All";
+pub const MODS_SORT_AUTO: &str = "Best match";
+pub const MODS_SORT_DOWNLOADS: &str = "Most downloaded";
+pub const MODS_SORT_FOLLOWS: &str = "Most followed";
+pub const MODS_SORT_NEWEST: &str = "Newest";
+pub const MODS_SORT_UPDATED: &str = "Recently updated";
+pub const MODS_BROWSE_TITLE: &str = "Find mods";
+pub const MODS_PREV: &str = "Previous";
+pub const MODS_NEXT: &str = "Next";
 pub const BUSY_MODS_INSTALL: &str =
     "Installing the mod. The server restarts, which can take a few minutes.";
 pub const BUSY_MODS_REMOVE: &str =

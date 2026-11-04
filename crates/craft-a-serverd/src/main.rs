@@ -164,6 +164,11 @@ mod app {
             .with_modrinth(Arc::new(craft_a_serverd::mods::real_client(
                 cfg.modrinth_contact.as_deref(),
             )))
+            .with_versions(Arc::new(craft_a_serverd::versions::VersionCatalog::new(
+                Arc::new(craft_a_serverd::mods::UreqTransport::new(
+                    &craft_a_serverd::mods::user_agent(cfg.modrinth_contact.as_deref()),
+                )),
+            )))
             .with_tunnel(tunnel),
         );
 

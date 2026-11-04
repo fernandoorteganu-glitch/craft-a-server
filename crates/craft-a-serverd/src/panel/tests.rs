@@ -144,7 +144,10 @@ fn harness_build(
         Arc::new(NoProbe::default()),
         env,
     )
-    .with_modrinth(net.client());
+    .with_modrinth(net.client())
+    .with_versions(Arc::new(crate::versions::VersionCatalog::new(Arc::new(
+        net.clone(),
+    ))));
     let svc = Arc::new(if with_tunnel {
         service.with_tunnel(tunnel)
     } else {
@@ -1346,6 +1349,7 @@ const EXPECTED_ROUTES: &[(&str, Access, &[Method])] = &[
     ("/logs", Access::Session, &[Method::GET]),
     ("/logs/tail", Access::Session, &[Method::GET]),
     ("/mods", Access::Session, &[Method::GET]),
+    ("/mods/icon", Access::Session, &[Method::GET]),
     ("/partials/mods", Access::Session, &[Method::GET]),
     ("/mods/updates", Access::Session, &[Method::GET]),
     (

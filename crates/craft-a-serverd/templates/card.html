@@ -2,24 +2,27 @@
 <section id="server-card" class="card" hx-get="/partials/server-card" hx-trigger="every 3s" hx-swap="outerHTML">
 {% include "banner.html" %}
 {% if let Some(s) = server %}
+<div class="hero">
 <h1>{{ s.name }}</h1>
-<p><span class="state state-{{ s.state_key }}">{{ s.state_label }}</span> <span class="note">{{ crate::panel::strings::CARD_VERSION }} {{ s.mc_version }}</span></p>
+<span class="state state-{{ s.state_key }}">{{ s.state_label }}</span>
+<span class="note">{{ crate::panel::strings::CARD_VERSION }} {{ s.mc_version }}</span>
+</div>
 {% if let Some(why) = s.failure %}
 <p class="alert" role="alert"><strong>{{ crate::panel::strings::CARD_WHY_FAILED }}:</strong> {{ why }}</p>
 {% endif %}
 {% if let Some(players) = s.players %}
 <p>{{ crate::panel::strings::CARD_PLAYERS }}: <strong>{{ players }}</strong></p>
 {% endif %}
-<dl class="facts">
-<dt>{{ crate::panel::strings::CARD_ADDRESS_LOCAL }}</dt>
-<dd><code>{{ s.address_local }}</code></dd>
+<dl class="addr">
+<div><dt>{{ crate::panel::strings::CARD_ADDRESS_LOCAL }}</dt>
+<dd><code>{{ s.address_local }}</code></dd></div>
 {% if let Some(ip) = s.address_ip %}
-<dt>{{ crate::panel::strings::CARD_ADDRESS_IP }}</dt>
-<dd><code>{{ ip }}</code></dd>
+<div><dt>{{ crate::panel::strings::CARD_ADDRESS_IP }}</dt>
+<dd><code>{{ ip }}</code></dd></div>
 {% endif %}
 {% if let Some(online) = online_address %}
-<dt>{{ crate::panel::strings::CARD_ADDRESS_ONLINE }}</dt>
-<dd><code>{{ online }}</code></dd>
+<div><dt>{{ crate::panel::strings::CARD_ADDRESS_ONLINE }}</dt>
+<dd><code>{{ online }}</code></dd></div>
 {% endif %}
 </dl>
 <div class="actions">
