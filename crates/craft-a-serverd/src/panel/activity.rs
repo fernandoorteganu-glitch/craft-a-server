@@ -138,6 +138,24 @@ where
     F: FnOnce(Arc<Service<R, P>>) -> Fut + Send + 'static,
     Fut: Future<Output = Result<(), ServiceError>> + Send + 'static,
 {
+    spawn_action_with(state, busy, move |service| async move {
+        action(service).await.map(|()| done.to_owned())
+    })
+}
+
+/// Like [`spawn_action`] for an action whose result text depends on what
+/// happened. The text is shown on screen, so it must hold no paths or secrets.
+pub fn spawn_action_with<R, P, F, Fut>(
+    state: &PanelState<R, P>,
+    busy: &'static str,
+    action: F,
+) -> Result<(), PanelError>
+where
+    R: ContainerRuntime + 'static,
+    P: StatusProbe + 'static,
+    F: FnOnce(Arc<Service<R, P>>) -> Fut + Send + 'static,
+    Fut: Future<Output = Result<String, ServiceError>> + Send + 'static,
+{
     let guard = state.activity().begin(busy)?;
     let service = Arc::clone(state.service());
     let core = Arc::clone(state.core());
@@ -145,7 +163,7 @@ where
         let outcome = action(service).await;
         let now = core.now();
         match outcome {
-            Ok(()) => guard.finish(true, done, now),
+            Ok(text) => guard.finish(true, &text, now),
             Err(e) => {
                 tracing::warn!(error = %e, "panel action failed");
                 guard.finish(false, &mapping::service_error_text(&e), now);

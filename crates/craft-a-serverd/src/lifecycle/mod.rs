@@ -11,6 +11,7 @@ mod performance;
 mod recovery;
 mod server;
 mod tunnel;
+mod world;
 
 // The service targets Linux (its fake runtime validates Linux paths), so these
 // run on unix only; on a Windows dev box use WSL.
@@ -40,6 +41,7 @@ pub use backups::Reason;
 pub use performance::{GameUse, HostUse, Resources};
 pub use recovery::ReconcileReport;
 pub use server::{Console, player_name};
+pub use world::WorldImportOutcome;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ServiceError {
@@ -67,6 +69,9 @@ pub enum ServiceError {
     Mods(#[from] ModError),
     #[error(transparent)]
     Tunnel(#[from] TunnelError),
+    /// A world import that cannot be done; the text is written for people.
+    #[error("{0}")]
+    WorldImport(String),
     #[error("i/o error during {context}: {source}")]
     Io {
         context: &'static str,

@@ -17,6 +17,7 @@ mod screens;
 mod server;
 mod sessions;
 mod util;
+mod world;
 
 use std::collections::HashMap;
 
@@ -24,6 +25,9 @@ use axum::Router;
 use axum::routing::{MethodRouter, delete, get, post};
 
 use super::PanelState;
+
+/// The one request that may carry a large body for a long time: the world upload.
+pub const UPLOAD_PATH: &str = "/world/upload";
 
 /// Who may call a route.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -195,6 +199,23 @@ where
             "/performance/view-distance",
             Access::Session,
             post(performance::set_view_distance::<R, P>),
+        )
+        .add("/world", Access::Session, get(world::page::<R, P>))
+        .add(
+            "/partials/world",
+            Access::Session,
+            get(world::status::<R, P>),
+        )
+        .add(UPLOAD_PATH, Access::Session, post(world::upload::<R, P>))
+        .add(
+            "/world/import",
+            Access::Session,
+            get(world::review::<R, P>).post(world::import::<R, P>),
+        )
+        .add(
+            "/world/discard",
+            Access::Session,
+            post(world::discard::<R, P>),
         )
         .add("/online", Access::Session, get(online::page::<R, P>))
         .add(

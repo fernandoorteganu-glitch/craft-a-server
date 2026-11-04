@@ -1,0 +1,53 @@
+{% import "macros.html" as m %}
+<section class="card">
+<h1>{{ crate::panel::strings::WORLD_REVIEW_TITLE }}</h1>
+<p class="alert" role="alert">{{ crate::panel::strings::WORLD_REVIEW_WARNING }}</p>
+<ul class="list">
+<li class="row"><div class="grow"><strong>{{ crate::panel::strings::WORLD_REVIEW_WORLD }}</strong>
+<div class="note">{{ world_files }} files, {{ world_size }}</div></div></li>
+<li class="row"><div class="grow"><strong>{{ crate::panel::strings::WORLD_REVIEW_MODS }}</strong>
+{% if mods.is_empty() %}
+<div class="note">{% if replaces_mods %}{{ crate::panel::strings::WORLD_REVIEW_MODS_EMPTY }}{% else %}{{ crate::panel::strings::WORLD_REVIEW_MODS_NONE }}{% endif %}</div>
+{% else %}
+<div class="note">{{ crate::panel::strings::WORLD_REVIEW_MODS_REPLACE }}</div>
+<ul>
+{% for name in mods %}
+<li>{{ name }}</li>
+{% endfor %}
+</ul>
+{% if mods_more > 0 %}<div class="note">+ {{ mods_more }} more</div>{% endif %}
+{% endif %}
+</div></li>
+{% if config_files > 0 %}
+<li class="row"><div class="grow"><strong>{{ crate::panel::strings::WORLD_REVIEW_CONFIG }}</strong>
+<div class="note">{{ config_files }} files</div></div></li>
+{% endif %}
+{% if !lists.is_empty() %}
+<li class="row"><div class="grow"><strong>{{ crate::panel::strings::WORLD_REVIEW_LISTS }}</strong>
+<div class="note">{{ lists }}</div></div></li>
+{% endif %}
+{% if icon %}
+<li class="row"><div class="grow"><strong>{{ crate::panel::strings::WORLD_REVIEW_ICON }}</strong>
+<div class="note">{{ crate::panel::strings::WORLD_REVIEW_YES }}</div></div></li>
+{% endif %}
+{% if properties %}
+<li class="row"><div class="grow"><strong>{{ crate::panel::strings::WORLD_REVIEW_SETTINGS }}</strong>
+<div class="note">{{ crate::panel::strings::WORLD_REVIEW_YES }}</div></div></li>
+{% endif %}
+{% if ignored > 0 %}
+<li class="row"><div class="grow"><strong>{{ crate::panel::strings::WORLD_REVIEW_IGNORED }}</strong>
+<div class="note">{{ ignored }}</div></div></li>
+{% endif %}
+</ul>
+<div class="actions">
+<form method="post" action="/world/import">
+{{ m::csrf_field(csrf_token) }}
+<input type="hidden" name="confirm" value="yes">
+<button type="submit" class="btn btn-danger">{{ crate::panel::strings::WORLD_CONFIRM }}</button>
+</form>
+<form method="post" action="/world/discard">
+{{ m::csrf_field(csrf_token) }}
+<button type="submit" class="btn btn-secondary">{{ crate::panel::strings::WORLD_DISCARD }}</button>
+</form>
+</div>
+</section>

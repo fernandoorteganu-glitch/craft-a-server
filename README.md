@@ -75,7 +75,17 @@ sudo craft-a-server pair
 
 If `craft-a-server.local` does not open on your phone (some Android versions), use the IP address shown, or set the machine name: `sudo hostnamectl set-hostname craft-a-server`. Lost the only paired phone? Run `sudo craft-a-server pair` on the machine itself (keyboard and screen, or your own SSH) and pair again; `sudo craft-a-server devices list` and `devices revoke <id>` sign phones out.
 
-From the panel you create the server (you accept the Minecraft EULA yourself), add friends to the whitelist, install mods from Modrinth, take and restore backups, see how much memory, processor and disk the server and the machine use right now (Performance), choose the view distance (4 to 16 chunks, applied at the next start), and optionally turn on online play through playit.gg. The same two are on the command line: `craft-a-server resources <server>` and `craft-a-server view-distance <server> [4-16]`.
+From the panel you create the server (you accept the Minecraft EULA yourself), add friends to the whitelist, install mods from Modrinth, take and restore backups, see how much memory, processor and disk the server and the machine use right now (Performance), choose the view distance (4 to 16 chunks, applied at the next start), import an existing world from a .zip (see below), and optionally turn on online play through playit.gg. The same two are on the command line: `craft-a-server resources <server>` and `craft-a-server view-distance <server> [4-16]`.
+
+## Import an existing world
+
+On the **World** screen of the panel (open it from your computer's browser if you prefer), upload a `.zip` of a Minecraft world or of a whole server folder. The panel shows what it found and asks you to confirm before it changes anything.
+
+- **Brought over:** the world (found by its `level.dat`, placed in `world/`), Fabric mods (`mods/*.jar`) and their `config/`, `whitelist.json`, `ops.json`, `banned-players.json`, `banned-ips.json`, a 64x64 `server-icon.png`, and a short list of gameplay settings from `server.properties` (difficulty, game mode, PvP, max players, MOTD, seed and a few more).
+- **Never brought over:** server jars, `libraries/`, logs, scripts, plugins, `eula.txt`, and any setting this program manages (online mode, whitelist enforcement, RCON, ports, the world name, the view distance).
+- **Safe by construction:** the old data is backed up first, the new data is built beside it and swapped in with two renames, and if the server does not start with the new files the old ones are put back by themselves. The uploaded file is deleted afterwards. A zip with paths that try to leave the server folder is refused.
+- **Mods:** a `mods/` folder in the zip replaces all current mods; jars that are not Fabric mods are skipped and listed. The mods list on the Mods screen then starts empty, because those jars were not installed from Modrinth.
+- **Limits:** 8 GiB per zip and 24 GiB unpacked, and the zip must fit in about a third of the free disk space. The world must be for the same Minecraft version as the server or older; a newer one will fail to start and be rolled back.
 
 ## Safety notes
 

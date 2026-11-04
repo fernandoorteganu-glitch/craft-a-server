@@ -27,6 +27,7 @@ pub fn service_error_text(e: &ServiceError) -> String {
             s::ERR_ACTION_FAILED.to_owned()
         }
         ServiceError::Tunnel(t) => capitalize(&t.to_string()),
+        ServiceError::WorldImport(m) => crate::mods::logic::clean_text(m, 600),
         ServiceError::Db(_)
         | ServiceError::Runtime(_)
         | ServiceError::Backup(_)
@@ -47,6 +48,7 @@ pub fn service_error(e: &ServiceError) -> PanelError {
         | ServiceError::DiskLow
         | ServiceError::Memory(_)
         | ServiceError::Mods(_)
+        | ServiceError::WorldImport(_)
         | ServiceError::StartFailed(_) => PanelError::Conflict(text),
         ServiceError::Db(_)
         | ServiceError::Runtime(_)

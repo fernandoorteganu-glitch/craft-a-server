@@ -84,6 +84,8 @@ use crate::runtime::ContainerRuntime;
 pub const MAX_BODY_BYTES: usize = 16 * 1024;
 /// A request that is still running after this long is answered with 408.
 pub const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
+/// The world upload may take this long (a big zip over Wi-Fi).
+pub const UPLOAD_TIMEOUT: Duration = Duration::from_secs(6 * 60 * 60);
 /// Requests handled at once; more get 503.
 pub const MAX_INFLIGHT: usize = 64;
 const PURGE_EVERY: Duration = Duration::from_secs(600);

@@ -564,6 +564,43 @@ pub fn qr_svg(text: &str) -> Option<String> {
     ))
 }
 
+/// The World screen.
+#[derive(Template, Debug)]
+#[template(path = "world.html")]
+pub struct WorldBody<'a> {
+    pub status: &'a str,
+    pub has_server: bool,
+    pub pending: bool,
+    pub busy: bool,
+    pub csrf_token: &'a str,
+    pub max_bytes: u64,
+    pub max_text: String,
+}
+
+/// The busy line and last result of the World screen (also its poll target).
+#[derive(Template, Debug)]
+#[template(path = "world_status.html")]
+pub struct WorldStatus {
+    pub banner: Banner,
+}
+
+/// What an uploaded file would change, shown before anything is replaced.
+#[derive(Template, Debug)]
+#[template(path = "world_review.html")]
+pub struct WorldReviewBody<'a> {
+    pub csrf_token: &'a str,
+    pub world_files: u64,
+    pub world_size: String,
+    pub mods: Vec<String>,
+    pub mods_more: usize,
+    pub replaces_mods: bool,
+    pub config_files: u64,
+    pub lists: String,
+    pub icon: bool,
+    pub properties: bool,
+    pub ignored: u64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

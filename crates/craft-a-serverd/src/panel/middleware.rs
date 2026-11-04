@@ -17,7 +17,7 @@ use super::error::{ErrorMarker, PanelError, Rendered};
 use super::net::{host_allowed, origin_ok, peer_allowed, unmap};
 use super::pages;
 use super::routes::Access;
-use super::{GuardState, MAX_BODY_BYTES, PanelCore, REQUEST_TIMEOUT};
+use super::{GuardState, MAX_BODY_BYTES, PanelCore, REQUEST_TIMEOUT, UPLOAD_TIMEOUT};
 use crate::db::hash_secret;
 
 pub const CSP: &str = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; \
@@ -210,19 +210,27 @@ pub(super) async fn limits(
     req: Request,
     next: Next,
 ) -> Response {
-    let too_big = req
-        .headers()
-        .get(header::CONTENT_LENGTH)
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.parse::<u64>().ok())
-        .is_some_and(|n| n > MAX_BODY_BYTES as u64);
+    // Only the world upload may be big and slow; its handler enforces its own caps.
+    let upload = *req.method() == Method::POST && req.uri().path() == super::routes::UPLOAD_PATH;
+    let too_big = !upload
+        && req
+            .headers()
+            .get(header::CONTENT_LENGTH)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse::<u64>().ok())
+            .is_some_and(|n| n > MAX_BODY_BYTES as u64);
     if too_big {
         return PanelError::PayloadTooLarge.into_response();
     }
     let Ok(_permit) = Arc::clone(&core.inflight).try_acquire_owned() else {
         return PanelError::Busy.into_response();
     };
-    match tokio::time::timeout(REQUEST_TIMEOUT, next.run(req)).await {
+    let allowed = if upload {
+        UPLOAD_TIMEOUT
+    } else {
+        REQUEST_TIMEOUT
+    };
+    match tokio::time::timeout(allowed, next.run(req)).await {
         Ok(res) => res,
         Err(_) => PanelError::Timeout.into_response(),
     }

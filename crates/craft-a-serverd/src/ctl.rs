@@ -369,6 +369,7 @@ pub fn error_response(e: &ServiceError) -> Response {
             )
         }
         ServiceError::Tunnel(t) => error(ErrorKind::Tunnel, t.to_string()),
+        ServiceError::WorldImport(m) => error(ErrorKind::InvalidInput, m.clone()),
         ServiceError::Runtime(RuntimeError::NotFound(_)) => error(
             ErrorKind::WrongState,
             "the server is not running".to_owned(),

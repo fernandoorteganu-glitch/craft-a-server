@@ -114,8 +114,8 @@ fn harness_build(
         now_unix: Arc::new(move || c.load(Ordering::SeqCst)),
         disk: Arc::new(|_| {
             Ok(DiskUsage {
-                free_bytes: 90,
-                total_bytes: 100,
+                free_bytes: 90 << 30,
+                total_bytes: 100 << 30,
             })
         }),
         poll_interval: std::time::Duration::from_millis(10),
@@ -1302,6 +1302,15 @@ const EXPECTED_ROUTES: &[(&str, Access, &[Method])] = &[
     ("/pair", Access::Public, &[Method::GET]),
     ("/api/pair", Access::Pairing, &[Method::POST]),
     ("/", Access::Session, &[Method::GET]),
+    ("/world", Access::Session, &[Method::GET]),
+    ("/partials/world", Access::Session, &[Method::GET]),
+    ("/world/upload", Access::Session, &[Method::POST]),
+    (
+        "/world/import",
+        Access::Session,
+        &[Method::GET, Method::POST],
+    ),
+    ("/world/discard", Access::Session, &[Method::POST]),
     ("/partials/server-card", Access::Session, &[Method::GET]),
     ("/server/start", Access::Session, &[Method::POST]),
     ("/server/stop", Access::Session, &[Method::POST]),
@@ -1800,3 +1809,4 @@ async fn healthz_is_public_and_tiny() -> TestResult {
 mod online;
 mod performance;
 mod screens;
+mod world;

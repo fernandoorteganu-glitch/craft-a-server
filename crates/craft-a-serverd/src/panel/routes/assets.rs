@@ -8,11 +8,13 @@ use crate::panel::error::PanelError;
 
 const HTMX: &[u8] = include_bytes!("../../../static/htmx.min.js");
 const PANEL_CSS: &[u8] = include_bytes!("../../../static/panel.css");
+const WORLD_JS: &[u8] = include_bytes!("../../../static/world.js");
 
 /// `(file name, content type, bytes)` of every static asset.
 pub const ASSETS: &[(&str, &str, &[u8])] = &[
     ("htmx.min.js", "text/javascript; charset=utf-8", HTMX),
     ("panel.css", "text/css; charset=utf-8", PANEL_CSS),
+    ("world.js", "text/javascript; charset=utf-8", WORLD_JS),
 ];
 
 pub async fn healthz() -> &'static str {

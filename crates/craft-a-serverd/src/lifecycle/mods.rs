@@ -496,7 +496,7 @@ impl<R: ContainerRuntime, P: StatusProbe> Service<R, P> {
         Ok(graph)
     }
 
-    fn start_allowance(&self, mods_after: usize) -> Duration {
+    pub(super) fn start_allowance(&self, mods_after: usize) -> Duration {
         let extra = (mods_after as u64).saturating_mul(ALLOWANCE_PER_MOD_SECS);
         Duration::from_secs(
             self.cfg

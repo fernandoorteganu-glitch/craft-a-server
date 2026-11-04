@@ -1,0 +1,33 @@
+{% import "macros.html" as m %}
+<section class="card">
+<h1>{{ crate::panel::strings::WORLD_TITLE }}</h1>
+<p class="note">{{ crate::panel::strings::WORLD_NOTE }}</p>
+<h2>{{ crate::panel::strings::WORLD_BRINGS }}</h2>
+<ul>
+{% for item in crate::panel::strings::WORLD_BRINGS_ITEMS %}
+<li>{{ item }}</li>
+{% endfor %}
+</ul>
+<p class="note">{{ crate::panel::strings::WORLD_NEVER }}</p>
+</section>
+{{ status|safe }}
+<section class="card">
+{% if !has_server %}
+<p>{{ crate::panel::strings::CARD_NO_SERVER }} <a href="/create">{{ crate::panel::strings::CARD_CREATE_LINK }}</a></p>
+{% else %}
+{% if pending %}
+<p class="alert" role="status">{{ crate::panel::strings::WORLD_PENDING }}</p>
+<p><a class="btn" href="/world/import">{{ crate::panel::strings::WORLD_PENDING_REVIEW }}</a></p>
+{% endif %}
+<form id="world-upload" class="form" method="post" action="/world/upload" data-csrf="{{ csrf_token }}" data-max="{{ max_bytes }}">
+<label for="world-file">{{ crate::panel::strings::WORLD_FILE_LABEL }}</label>
+<input id="world-file" name="file" type="file" accept=".zip,application/zip" required>
+<p class="note">{{ crate::panel::strings::WORLD_LIMIT }}: {{ max_text }}</p>
+<progress id="world-progress" max="100" value="0" hidden></progress>
+<p id="world-message" class="note" role="status" aria-live="polite"></p>
+<button type="submit" class="btn"{% if busy %} disabled{% endif %}>{{ crate::panel::strings::WORLD_UPLOAD }}</button>
+</form>
+<noscript><p class="alert">{{ crate::panel::strings::WORLD_NEEDS_JS }}</p></noscript>
+<script src="/static/world.js" defer></script>
+{% endif %}
+</section>

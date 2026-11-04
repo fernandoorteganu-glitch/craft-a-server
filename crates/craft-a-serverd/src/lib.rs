@@ -9,3 +9,4 @@ pub mod panel;
 pub mod runtime;
 pub mod settings;
 pub mod tunnel;
+pub mod world;

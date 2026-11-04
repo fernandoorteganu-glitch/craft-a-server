@@ -27,6 +27,8 @@ askama = { version = "0.16.1", default-features = false, features = ["derive", "
 serde_urlencoded = { version = "0.7.1", default-features = false }
 qrcodegen = "1.8.0"
 ureq = { version = "3.5.0", default-features = false, features = ["rustls"] }
+zip = { version = "9.3.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+http-body-util = "0.1.5"
 
 [lints]
 workspace = true

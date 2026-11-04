@@ -295,3 +295,49 @@ pub const PERF_VIEW_DEFAULT: &str = "game default";
 pub const PERF_VIEW_SAVE: &str = "Save";
 pub const PERF_VIEW_APPLIES: &str = "A change takes effect the next time the server starts. Restart it from Home when nobody is playing.";
 pub const DONE_VIEW_DISTANCE: &str = "View distance saved";
+
+// World import
+pub const NAV_WORLD: &str = "World";
+pub const WORLD_TITLE: &str = "Import a world";
+pub const WORLD_NOTE: &str = "Upload a .zip of a Minecraft world from this computer. It can be just the world folder or a whole server folder.";
+pub const WORLD_BRINGS: &str = "What it can bring";
+pub const WORLD_BRINGS_ITEMS: [&str; 5] = [
+    "The world itself: terrain, players, advancements and datapacks",
+    "Mods (Fabric mods only) and their settings",
+    "The whitelist, operators and banned players",
+    "The server icon (a 64x64 PNG image)",
+    "Gameplay settings such as difficulty and game mode",
+];
+pub const WORLD_NEVER: &str = "The server program, libraries, logs, scripts and the EULA file are never imported. Online mode and the whitelist always stay on.";
+pub const WORLD_FILE_LABEL: &str = "Zip file";
+pub const WORLD_LIMIT: &str = "Largest file that fits right now";
+pub const WORLD_UPLOAD: &str = "Upload and check";
+pub const WORLD_NEEDS_JS: &str = "Uploading needs JavaScript, which is turned off in this browser.";
+pub const WORLD_PENDING: &str = "A file is already waiting to be imported.";
+pub const WORLD_PENDING_REVIEW: &str = "Review it";
+pub const WORLD_REVIEW_TITLE: &str = "Review the import";
+pub const WORLD_REVIEW_WARNING: &str = "This replaces the current world with the one in the file. A backup is taken first and the server restarts. If the server cannot start with the new files, the old ones are put back by themselves.";
+pub const WORLD_REVIEW_WORLD: &str = "World";
+pub const WORLD_REVIEW_MODS: &str = "Mods";
+pub const WORLD_REVIEW_MODS_REPLACE: &str =
+    "All current mods are replaced by these. Mods that are not for Fabric are skipped.";
+pub const WORLD_REVIEW_MODS_NONE: &str = "No mods in the file: the current mods stay.";
+pub const WORLD_REVIEW_MODS_EMPTY: &str =
+    "The file has an empty mods folder: all current mods are removed.";
+pub const WORLD_REVIEW_CONFIG: &str = "Mod settings";
+pub const WORLD_REVIEW_LISTS: &str = "Player lists";
+pub const WORLD_REVIEW_ICON: &str = "Server icon";
+pub const WORLD_REVIEW_SETTINGS: &str = "Gameplay settings";
+pub const WORLD_REVIEW_IGNORED: &str = "Files that are not used";
+pub const WORLD_REVIEW_YES: &str = "Yes";
+pub const WORLD_CONFIRM: &str = "Replace the world and import";
+pub const WORLD_DISCARD: &str = "Discard the upload";
+pub const BUSY_WORLD_UPLOAD: &str = "Receiving the file. Keep this page open until it finishes.";
+pub const BUSY_WORLD_IMPORT: &str =
+    "Importing the world. The server restarts, which can take a few minutes.";
+pub const DONE_WORLD_UPLOAD: &str = "File received.";
+pub const DONE_WORLD_DISCARD: &str = "The uploaded file was deleted.";
+pub const ERR_NO_UPLOAD: &str = "There is no uploaded file waiting. Upload one first";
+pub const ERR_UPLOAD_LENGTH: &str = "The upload did not say how big it is";
+pub const ERR_UPLOAD_NOT_ZIP: &str = "That file is not a zip archive";
+pub const ERR_UPLOAD_INCOMPLETE: &str = "The upload did not finish. Try again";
